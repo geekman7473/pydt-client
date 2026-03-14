@@ -11,9 +11,10 @@ import { RPC_TO_MAIN } from "../rpcChannels";
 import { Observable } from "rxjs";
 
 @Component({
-  selector: "pydt-play-turn",
-  templateUrl: "./playTurn.component.html",
-  styleUrls: ["./playTurn.component.css"],
+    selector: "pydt-play-turn",
+    templateUrl: "./playTurn.component.html",
+    styleUrls: ["./playTurn.component.css"],
+    standalone: false
 })
 export class PlayTurnComponent implements OnInit, OnDestroy {
   @Input() gamePlayerProfiles: SteamProfileMap;
@@ -237,7 +238,7 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
         };
 
         this.xhr.setRequestHeader("Content-Type", "application/octet-stream");
-        this.xhr.send(fileData);
+        this.xhr.send(fileData as unknown as ArrayBuffer);
       });
 
       await this.gameService.finishSubmit(this.playTurnState.game.gameId).toPromise();

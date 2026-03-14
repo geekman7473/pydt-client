@@ -8,9 +8,10 @@ import { RPC_TO_MAIN } from "../rpcChannels";
 import { Observable } from "rxjs";
 
 @Component({
-  selector: "pydt-game",
-  templateUrl: "./game.component.html",
-  styleUrls: ["./game.component.css"],
+    selector: "pydt-game",
+    templateUrl: "./game.component.html",
+    styleUrls: ["./game.component.css"],
+    standalone: false
 })
 export class GameComponent implements OnInit, OnDestroy {
   @Input() game: Game;

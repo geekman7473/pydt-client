@@ -8,8 +8,9 @@ class AuthModel {
 }
 
 @Component({
-  selector: "pydt-auth",
-  templateUrl: "./auth.component.html",
+    selector: "pydt-auth",
+    templateUrl: "./auth.component.html",
+    standalone: false
 })
 export class AuthComponent {
   model = new AuthModel();

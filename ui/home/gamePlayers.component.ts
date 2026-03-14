@@ -3,9 +3,10 @@ import { CivDef, Game, GamePlayer, SteamProfileMap, CivGame } from "pydt-shared"
 import { SafeMetadataLoader } from "../shared/safeMetadataLoader";
 
 @Component({
-  selector: "pydt-game-players",
-  templateUrl: "./gamePlayers.component.html",
-  styleUrls: ["./gamePlayers.component.css"],
+    selector: "pydt-game-players",
+    templateUrl: "./gamePlayers.component.html",
+    styleUrls: ["./gamePlayers.component.css"],
+    standalone: false
 })
 export class GamePlayersComponent implements OnInit {
   @Input() game: Game;

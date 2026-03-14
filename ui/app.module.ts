@@ -1,4 +1,4 @@
-import { HttpClientModule, HTTP_INTERCEPTORS } from "@angular/common/http";
+import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from "@angular/common/http";
 import { ErrorHandler, NgModule } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { BrowserModule } from "@angular/platform-browser";
@@ -38,42 +38,36 @@ export const configFactory = (): Configuration =>
     basePath: environment.apiUrl,
   });
 
-@NgModule({
-  imports: [
-    BrowserModule,
-    BrowserAnimationsModule,
-    HttpClientModule,
-    ApiModule.forRoot(configFactory),
-    FormsModule,
-    ModalModule.forRoot(),
-    ProgressbarModule.forRoot(),
-    TooltipModule.forRoot(),
-    TabsModule.forRoot(),
-    PydtSharedModule,
-    routing,
-    MarkdownModule.forRoot({
-      markedOptions: {
-        provide: MARKED_OPTIONS,
-        useValue: {
-          breaks: true,
-        },
-      },
-    }),
-  ],
-  declarations: [AppComponent, AuthComponent, HomeComponent, GameComponent, PlayTurnComponent, GamePlayersComponent],
-  providers: [
-    ProfileCacheService,
-    TurnCacheService,
-    PydtSettingsFactory,
-    SafeMetadataLoader,
-    { provide: ErrorHandler, useClass: RollbarErrorHandler },
-    { provide: RollbarService, useFactory: rollbarFactory },
-    AuthService,
-    { provide: HTTP_INTERCEPTORS, useExisting: BusyService, multi: true },
-    { provide: HTTP_INTERCEPTORS, useExisting: DateInterceptor, multi: true },
-    { provide: HTTP_INTERCEPTORS, useExisting: MetadataCacheService, multi: true },
-    PlayTurnState,
-  ],
-  bootstrap: [AppComponent],
-})
+@NgModule({ declarations: [AppComponent, AuthComponent, HomeComponent, GameComponent, PlayTurnComponent, GamePlayersComponent],
+    bootstrap: [AppComponent], imports: [BrowserModule,
+        BrowserAnimationsModule,
+        ApiModule.forRoot(configFactory),
+        FormsModule,
+        ModalModule.forRoot(),
+        ProgressbarModule.forRoot(),
+        TooltipModule.forRoot(),
+        TabsModule.forRoot(),
+        PydtSharedModule,
+        routing,
+        MarkdownModule.forRoot({
+            markedOptions: {
+                provide: MARKED_OPTIONS,
+                useValue: {
+                    breaks: true,
+                },
+            },
+        })], providers: [
+        ProfileCacheService,
+        TurnCacheService,
+        PydtSettingsFactory,
+        SafeMetadataLoader,
+        { provide: ErrorHandler, useClass: RollbarErrorHandler },
+        { provide: RollbarService, useFactory: rollbarFactory },
+        AuthService,
+        { provide: HTTP_INTERCEPTORS, useExisting: BusyService, multi: true },
+        { provide: HTTP_INTERCEPTORS, useExisting: DateInterceptor, multi: true },
+        { provide: HTTP_INTERCEPTORS, useExisting: MetadataCacheService, multi: true },
+        PlayTurnState,
+        provideHttpClient(withInterceptorsFromDi()),
+    ] })
 export class AppModule {}

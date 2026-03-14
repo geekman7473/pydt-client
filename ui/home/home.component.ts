@@ -20,8 +20,9 @@ interface GameWithYourTurn extends Game {
 }
 
 @Component({
-  selector: "pydt-home",
-  templateUrl: "./home.component.html",
+    selector: "pydt-home",
+    templateUrl: "./home.component.html",
+    standalone: false
 })
 export class HomeComponent implements OnInit, OnDestroy {
   games: Game[];

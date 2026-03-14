@@ -1,4 +1,4 @@
-import * as Rollbar from "rollbar";
+import Rollbar from "rollbar";
 import { Injectable, Inject, InjectionToken, ErrorHandler } from "@angular/core";
 import { RPC_TO_MAIN } from "./rpcChannels";
 import { environment } from "./environments/environment";

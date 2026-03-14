@@ -69,43 +69,45 @@
             </div>
           </div>
         </tab>
-        <tab *ngFor="let civGame of civGames" [heading]="civGame.displayName" style="padding-top: 5px">
-          <div class="row" *ngIf="gameStoreOptions(civGame).length > 1">
-            <label class="col-xs-3 control-label force-horizontal-label text-left">Game Store</label>
-            <div class="col-xs-9">
-              <select
-                class="form-control"
-                [name]="'civstore' + civGame.id"
-                [ngModel]="settings.getGameStore(civGame)"
-                (ngModelChange)="settings.setGameStore(civGame, $event)"
-              >
-                <option *ngFor="let opt of gameStoreOptions(civGame)" [ngValue]="opt.value">{{ opt.key }}</option>
-              </select>
+        @for (civGame of civGames; track civGame) {
+          <tab [heading]="civGame.displayName" style="padding-top: 5px">
+            @if (gameStoreOptions(civGame).length > 1) {
+              <div class="row">
+                <label class="col-xs-3 control-label force-horizontal-label text-left">Game Store</label>
+                <div class="col-xs-9">
+                  <select
+                    class="form-control"
+                    [name]="'civstore' + civGame.id"
+                    [ngModel]="settings.getGameStore(civGame)"
+                    (ngModelChange)="settings.setGameStore(civGame, $event)"
+                  >
+                    @for (opt of gameStoreOptions(civGame); track opt) {
+                      <option [ngValue]="opt.value">{{ opt.key }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+            }
+            <div class="row">
+              <label class="col-xs-3 control-label force-horizontal-label text-left">Default Save Path</label>
+              <div class="col-xs-9">
+                <p class="form-control-static">{{ settings.getDefaultSavePath(civGame) }}</p>
+              </div>
             </div>
-          </div>
-          <div class="row">
-            <label class="col-xs-3 control-label force-horizontal-label text-left">Default Save Path</label>
-            <div class="col-xs-9">
-              <p class="form-control-static">{{ settings.getDefaultSavePath(civGame) }}</p>
+            <div class="row">
+              <label class="col-xs-3 control-label force-horizontal-label text-left">Override Save Path</label>
+              <div class="col-xs-9">
+                <p class="form-control-static">
+                  {{ settings.getSavePath(civGame, false) || "Not Set!" }}&nbsp;&nbsp;
+                  <button class="btn btn-primary btn-xs" (click)="openDirectoryDialog(civGame)">Set</button>&nbsp;
+                  @if (settings.getSavePath(civGame, false)) {
+                    <button class="btn btn-danger btn-xs" (click)="settings.setSavePath(civGame, '')">Clear</button>
+                  }
+                </p>
+              </div>
             </div>
-          </div>
-          <div class="row">
-            <label class="col-xs-3 control-label force-horizontal-label text-left">Override Save Path</label>
-            <div class="col-xs-9">
-              <p class="form-control-static">
-                {{ settings.getSavePath(civGame, false) || "Not Set!" }}&nbsp;&nbsp;
-                <button class="btn btn-primary btn-xs" (click)="openDirectoryDialog(civGame)">Set</button>&nbsp;
-                <button
-                  class="btn btn-danger btn-xs"
-                  *ngIf="settings.getSavePath(civGame, false)"
-                  (click)="settings.setSavePath(civGame, '')"
-                >
-                  Clear
-                </button>
-              </p>
-            </div>
-          </div>
-        </tab>
+          </tab>
+        }
       </tabset>
     </form>
   </div>

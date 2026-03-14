@@ -8,29 +8,38 @@
   >
     Refresh
   </button>
-  <button
-    *ngIf="hasUnreadSmack"
-    type="button"
-    class="btn btn-xs btn-default"
-    style="position: fixed; top: 0; right: 85px; z-index: 1000"
-    (click)="clearSmack()"
-  >
-    Clear All Smack Talk Notifications
-  </button>
-  <h1 *ngIf="errorLoading">There was an error loading your games. Please check your internet connection.</h1>
-  <ng-container *ngIf="!errorLoading">
-    <h1 *ngIf="games?.length === 0">You have no games. :(</h1>
-    <div *ngIf="games" style="margin-top: 30px">
-      <div *ngFor="let game of sortedTurns">
-        <pydt-game
-          [game]="game"
-          [user]="user"
-          (smackRead)="smackRead(game.gameId, $event)"
-          [discoursePostNumber]="discourseInfo[game.gameId]"
-          [gamePlayerProfiles]="gamePlayerProfiles"
-          [yourTurn]="game.yourTurn"
-        ></pydt-game>
+  @if (hasUnreadSmack) {
+    <button
+      type="button"
+      class="btn btn-xs btn-default"
+      style="position: fixed; top: 0; right: 85px; z-index: 1000"
+      (click)="clearSmack()"
+    >
+      Clear All Smack Talk Notifications
+    </button>
+  }
+  @if (errorLoading) {
+    <h1>There was an error loading your games. Please check your internet connection.</h1>
+  }
+  @if (!errorLoading) {
+    @if (games?.length === 0) {
+      <h1>You have no games. :(</h1>
+    }
+    @if (games) {
+      <div style="margin-top: 30px">
+        @for (game of sortedTurns; track game) {
+          <div>
+            <pydt-game
+              [game]="game"
+              [user]="user"
+              (smackRead)="smackRead(game.gameId, $event)"
+              [discoursePostNumber]="discourseInfo[game.gameId]"
+              [gamePlayerProfiles]="gamePlayerProfiles"
+              [yourTurn]="game.yourTurn"
+            ></pydt-game>
+          </div>
+        }
       </div>
-    </div>
-  </ng-container>
+    }
+  }
 </div>

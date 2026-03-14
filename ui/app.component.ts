@@ -9,8 +9,9 @@ import { AuthService } from "./shared/authService";
 import { Router } from "@angular/router";
 
 @Component({
-  selector: "pydt-app",
-  templateUrl: "./app.component.html",
+    selector: "pydt-app",
+    templateUrl: "./app.component.html",
+    standalone: false
 })
 export class AppComponent implements OnInit {
   version: string;
@@ -31,7 +32,8 @@ export class AppComponent implements OnInit {
     private authService: AuthService,
     private router: Router,
   ) {
-    setTheme("bs3");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setTheme("bs3" as any);
   }
 
   ngOnInit(): void {

@@ -8,10 +8,12 @@
       placement="bottom"
     ></i>
   </h2>
-  <p *ngIf="authError" style="color: red; font-weight: bold">
-    The token you entered isn't working, are you sure you're pasting in the token from the "Client Token" section of the
-    "Your Profile" page on the website?
-  </p>
+  @if (authError) {
+    <p style="color: red; font-weight: bold">
+      The token you entered isn't working, are you sure you're pasting in the token from the "Client Token" section of
+      the "Your Profile" page on the website?
+    </p>
+  }
   <form (ngSubmit)="onSubmit()" #tokenForm="ngForm">
     <div class="form-group">
       <label for="token">Token</label>
