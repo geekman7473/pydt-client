@@ -1,7 +1,7 @@
 {
   "name": "playyourdamnturn",
   "productName": "Play Your Damn Turn Client",
-  "version": "2.1.10",
+  "version": "2.2.0",
   "description": "Desktop Client to assist with playing your damn turns.",
   "author": "playyourdamnturn.com",
   "main": "app_compiled/main.js",
@@ -16,15 +16,15 @@
   },
   "dependencies": {
     "auto-launch": "^5.0.6",
-    "aws-iot-device-sdk": "^2.2.13",
-    "chokidar": "^3.6.0",
-    "electron-context-menu": "^3.6.1",
+    "aws-iot-device-sdk": "^2.2.16",
+    "chokidar": "^5.0.0",
+    "electron-context-menu": "^4.1.1",
     "electron-json-storage": "^4.6.0",
-    "electron-log": "^5.1.1",
-    "electron-updater": "^6.1.7",
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.8.3",
     "electron-window-state": "^5.0.3",
     "mkdirp": "^3.0.1",
-    "open": "^10.0.3",
+    "open": "^11.0.0",
     "rollbar": "^2.26.2"
   },
   "devDependencies": {
