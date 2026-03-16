@@ -1,35 +1,35 @@
 @if (!!games) {
-  <div class="panel" [ngClass]="{ 'panel-default': !yourTurn, 'panel-primary': yourTurn }">
-    <div class="panel-heading" style="height: 32px; overflow: hidden">
+  <div class="card" [ngClass]="{ 'card-primary': yourTurn }">
+    <div class="card-header" style="height: 36px; overflow: hidden">
       <img
         src="https://playyourdamnturn.com/img/game_{{ civGame?.id }}.png"
         style="height: 15px; padding-right: 8px; position: relative; top: -2px"
       />
-      <a href="javascript:void(0)" (click)="openGameOnWeb()">{{ gameTitle }}</a>
+      <a href="javascript:void(0)" style="color: #000;" (click)="openGameOnWeb()">{{ gameTitle }}</a>
       @if (game.gameTurnRangeKey > 1) {
-        <small class="pull-right">{{ lastTurnText$ | async }}</small>
-        <small class="pull-right">Round {{ game.round }} -&nbsp;</small>
+        <small class="float-end">{{ lastTurnText$ | async }}</small>
+        <small class="float-end">Round {{ game.round }} -&nbsp;</small>
       }
     </div>
-    <div class="panel-body">
+    <div class="card-body">
       <div class="row" style="padding-left: 13px; padding-right: 13px">
         <pydt-game-players [game]="game" [gamePlayerProfiles]="gamePlayerProfiles"></pydt-game-players>
       </div>
       @if (newDiscoursePost) {
         <div>
-          <button type="submit" class="btn btn-primary btn-xs btn-block" (click)="readSmack()">
+          <button type="submit" class="btn btn-primary btn-sm d-block w-100" (click)="readSmack()">
             Read New Smack Talk Post!
           </button>
         </div>
       }
       @if (yourTurn && game.gameTurnRangeKey > 1) {
         <div>
-          <button type="submit" class="btn btn-primary btn-xs btn-block" (click)="playTurn()">{{ playText }}</button>
+          <button type="submit" class="btn btn-primary btn-sm d-block w-100" (click)="playTurn()">{{ playText }}</button>
         </div>
       }
       @if (yourTurn && game.gameTurnRangeKey === 1) {
         <div>
-          <button type="submit" class="btn btn-primary btn-xs btn-block" (click)="openGameOnWeb()">
+          <button type="submit" class="btn btn-primary btn-sm d-block w-100" (click)="openGameOnWeb()">
             You must submit the initial game turn on the website.
           </button>
         </div>

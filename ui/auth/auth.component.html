@@ -1,9 +1,9 @@
-<div class="container">
+<div>
   <h2>
     Enter your token...
     <i
       style="font-size: 20px; margin-left: 20px"
-      class="glyphicon glyphicon-question-sign"
+      class="fa fa-question-circle"
       tooltip="You can find your token in the 'Your Profile' section of the website."
       placement="bottom"
     ></i>
@@ -15,10 +15,10 @@
     </p>
   }
   <form (ngSubmit)="onSubmit()" #tokenForm="ngForm">
-    <div class="form-group">
-      <label for="token">Token</label>
+    <div class="mb-3">
+      <label for="token" class="form-label">Token</label>
       <input type="text" class="form-control" id="token" required [(ngModel)]="model.token" name="token" />
     </div>
-    <button type="submit" class="btn btn-primary btn-sm btn-block" [disabled]="!tokenForm.form.valid">Submit</button>
+    <button type="submit" class="btn btn-primary btn-sm d-block w-100" [disabled]="!tokenForm.form.valid">Submit</button>
   </form>
 </div>

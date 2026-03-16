@@ -32,13 +32,12 @@ export class AppComponent implements OnInit {
     private authService: AuthService,
     private router: Router,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setTheme("bs3" as any);
+    setTheme("bs5");
   }
 
   ngOnInit(): void {
     const modalOptions: ModalOptions = {
-      class: "modal-lg",
+      class: "modal-near-fullscreen",
     };
 
     window.pydtApi.ipc.receive<string>(RPC_TO_RENDERER.SHOW_ABOUT_MODAL, data => {

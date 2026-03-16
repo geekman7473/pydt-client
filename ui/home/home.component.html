@@ -1,7 +1,7 @@
 <div>
   <button
     type="button"
-    class="btn btn-xs btn-default"
+    class="btn btn-sm btn-secondary"
     [disabled]="refreshDisabled"
     style="position: fixed; top: 0; right: 20px; z-index: 1000"
     (click)="refresh()"
@@ -11,7 +11,7 @@
   @if (hasUnreadSmack) {
     <button
       type="button"
-      class="btn btn-xs btn-default"
+      class="btn btn-sm btn-secondary"
       style="position: fixed; top: 0; right: 85px; z-index: 1000"
       (click)="clearSmack()"
     >
@@ -26,7 +26,7 @@
       <h1>You have no games. :(</h1>
     }
     @if (games) {
-      <div style="margin-top: 30px">
+      <div style="margin-top: 35px">
         @for (game of sortedTurns; track game) {
           <div>
             <pydt-game

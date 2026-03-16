@@ -1,14 +1,14 @@
 @if (games) {
   <div>
-    <div class="panel panel-default">
-      <div class="panel-heading">
+    <div class="card">
+      <div class="card-header">
         <div style="overflow: hidden; width: 100%; white-space: nowrap; text-overflow: ellipsis; float: left">
           Playing Turn: <a [href]="gameUrl">{{ playTurnState.gameTitle }}</a>
-          <small class="pull-right">{{ lastTurnText$ | async }}</small>
-          <small class="pull-right">Round {{ playTurnState.game.round }} -&nbsp;</small>
+          <small class="float-end">{{ lastTurnText$ | async }}</small>
+          <small class="float-end">Round {{ playTurnState.game.round }} -&nbsp;</small>
         </div>
       </div>
-      <div class="panel-body">
+      <div class="card-body">
         <h3 [innerHTML]="status"></h3>
         <div>
           @if (curBytes) {
@@ -28,23 +28,23 @@
             </progressbar>
           }
           @if (saveFileToUpload) {
-            <button class="btn btn-primary btn-sm btn-block" (click)="submitFile(game)">
+            <button class="btn btn-primary btn-sm d-block w-100" (click)="submitFile(game)">
               {{ abort ? "Re-" : "" }}Submit File
             </button>
           }
           @if (saveFileToUpload) {
-            <button class="btn btn-default btn-sm btn-block" (click)="watchForSave()">
+            <button class="btn btn-secondary btn-sm d-block w-100" (click)="watchForSave()">
               {{ abort ? "Watch for New Save" : "Ignore" }}
             </button>
           }
-          <button class="btn btn-default btn-sm btn-block" (click)="goHome()">
+          <button class="btn btn-secondary btn-sm d-block w-100" (click)="goHome()">
             Cancel Turn and Return to Game List
           </button>
         </div>
       </div>
     </div>
-    <div class="panel panel-default">
-      <div class="panel-body">
+    <div class="card">
+      <div class="card-body">
         <pydt-game-players
           [game]="playTurnState.game"
           class="clearfix"
