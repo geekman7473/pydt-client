@@ -1,6 +1,6 @@
 @if (games) {
   <div>
-    <div class="card">
+    <div class="card mt-3">
       <div class="card-header">
         <div style="overflow: hidden; width: 100%; white-space: nowrap; text-overflow: ellipsis; float: left">
           Playing Turn: <a [href]="gameUrl">{{ playTurnState.gameTitle }}</a>
@@ -28,16 +28,16 @@
             </progressbar>
           }
           @if (saveFileToUpload) {
-            <button class="btn btn-primary btn-sm d-block w-100" (click)="submitFile(game)">
+            <button class="btn btn-primary btn-sm d-block w-100 mt-1" (click)="submitFile(game)">
               {{ abort ? "Re-" : "" }}Submit File
             </button>
           }
           @if (saveFileToUpload) {
-            <button class="btn btn-secondary btn-sm d-block w-100" (click)="watchForSave()">
+            <button class="btn btn-secondary btn-sm d-block w-100 mt-1" (click)="watchForSave()">
               {{ abort ? "Watch for New Save" : "Ignore" }}
             </button>
           }
-          <button class="btn btn-secondary btn-sm d-block w-100" (click)="goHome()">
+          <button class="btn btn-secondary btn-sm d-block w-100 mt-1" (click)="goHome()">
             Cancel Turn and Return to Game List
           </button>
         </div>
