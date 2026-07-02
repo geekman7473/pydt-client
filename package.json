@@ -39,6 +39,15 @@
     "win": {
       "artifactName": "playyourdamnturn-win-${version}.${ext}",
       "executableName": "PydtClient",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
       "azureSignOptions": {
         "publisherName": "Rosack Software Solutions, LLC",
         "endpoint": "https://eus.codesigning.azure.net/",
