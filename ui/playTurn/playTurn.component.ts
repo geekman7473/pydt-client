@@ -1,22 +1,35 @@
 import { HttpErrorResponse } from "@angular/common/http";
-import { Component, HostListener, Input, NgZone, OnDestroy, OnInit } from "@angular/core";
+import { Component, HostListener, Input, NgZone, OnDestroy, OnInit, inject } from "@angular/core";
 import { Router } from "@angular/router";
 import * as pako from "pako";
-import { GameService, SteamProfileMap, CivGame, CountdownUtility } from "pydt-shared";
+import { GameService, SteamProfileMap, CivGame, CountdownUtility, PydtSharedModule } from "pydt-shared";
 import { PydtSettingsFactory, PydtSettingsData } from "../shared/pydtSettings";
 import { PlayTurnState } from "./playTurnState.service";
 import { TurnCacheService, TurnDownloader } from "../shared/turnCacheService";
 import { SafeMetadataLoader } from "../shared/safeMetadataLoader";
 import { RPC_TO_MAIN } from "../rpcChannels";
 import { Observable } from "rxjs";
+import { ProgressbarComponent } from "ngx-bootstrap/progressbar";
+import { GamePlayersComponent } from "../home/gamePlayers.component";
+import { MarkdownComponent } from "ngx-markdown";
+import { AuthComponent } from "../auth/auth.component";
+import { AsyncPipe } from "@angular/common";
 
 @Component({
-    selector: "pydt-play-turn",
-    templateUrl: "./playTurn.component.html",
-    styleUrls: ["./playTurn.component.css"],
-    standalone: false
+  selector: "pydt-play-turn",
+  templateUrl: "./playTurn.component.html",
+  styleUrls: ["./playTurn.component.css"],
+  imports: [ProgressbarComponent, GamePlayersComponent, MarkdownComponent, AuthComponent, AsyncPipe, PydtSharedModule],
 })
 export class PlayTurnComponent implements OnInit, OnDestroy {
+  readonly playTurnState = inject(PlayTurnState);
+  private readonly metadataLoader = inject(SafeMetadataLoader);
+  private readonly turnCacheService = inject(TurnCacheService);
+  private readonly gameService = inject(GameService);
+  private readonly pydtSettingsFactory = inject(PydtSettingsFactory);
+  private readonly router = inject(Router);
+  private readonly ngZone = inject(NgZone);
+
   @Input() gamePlayerProfiles: SteamProfileMap;
   status = "Downloading Save File...";
   saveFileToUpload: string;
@@ -32,16 +45,6 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
   private archiveDir: string;
   private saveFileToPlay: string;
   lastTurnText$: Observable<string>;
-
-  constructor(
-    public readonly playTurnState: PlayTurnState,
-    private readonly metadataLoader: SafeMetadataLoader,
-    private readonly turnCacheService: TurnCacheService,
-    private readonly gameService: GameService,
-    private readonly pydtSettingsFactory: PydtSettingsFactory,
-    private readonly router: Router,
-    private readonly ngZone: NgZone,
-  ) {}
 
   @HostListener("click", ["$event"])
   onMouseEnter(event: MouseEvent): boolean {
@@ -59,7 +62,11 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
     return this.games.find(x => x.id === this.playTurnState.game.gameType);
   }
 
-  async ngOnInit(): Promise<void> {
+  ngOnInit(): void {
+    void this.init();
+  }
+
+  private async init(): Promise<void> {
     this.abort = false;
     this.settings = await this.pydtSettingsFactory.getSettings();
 
@@ -226,14 +233,14 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
           if (this.xhr.status === 200) {
             resolve(null);
           } else {
-            reject(this.xhr.status);
+            reject(new Error(String(this.xhr.status)));
           }
 
           this.xhr = null;
         };
 
         this.xhr.onerror = () => {
-          reject(this.xhr.status);
+          reject(new Error(String(this.xhr.status)));
           this.xhr = null;
         };
 

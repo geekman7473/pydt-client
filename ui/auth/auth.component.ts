@@ -1,26 +1,26 @@
-import { Component } from "@angular/core";
+import { Component, inject } from "@angular/core";
 import { Router } from "@angular/router";
 import { UserService } from "pydt-shared";
 import { AuthService } from "../shared/authService";
+import { TooltipDirective } from "ngx-bootstrap/tooltip";
+import { FormsModule } from "@angular/forms";
 
 class AuthModel {
   public token: string;
 }
 
 @Component({
-    selector: "pydt-auth",
-    templateUrl: "./auth.component.html",
-    standalone: false
+  selector: "pydt-auth",
+  templateUrl: "./auth.component.html",
+  imports: [TooltipDirective, FormsModule],
 })
 export class AuthComponent {
+  private auth = inject(AuthService);
+  private userService = inject(UserService);
+  private router = inject(Router);
+
   model = new AuthModel();
   authError = false;
-
-  constructor(
-    private auth: AuthService,
-    private userService: UserService,
-    private router: Router,
-  ) {}
 
   async onSubmit(): Promise<void> {
     this.authError = false;

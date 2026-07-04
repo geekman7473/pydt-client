@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from "@angular/core";
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, inject } from "@angular/core";
 import { Router } from "@angular/router";
 import { Game, SteamProfileMap, User, CivGame, CountdownUtility } from "pydt-shared";
 import { SafeMetadataLoader } from "../shared/safeMetadataLoader";
@@ -6,14 +6,20 @@ import { PlayTurnState } from "../playTurn/playTurnState.service";
 import { DiscourseInfo } from "../shared/discourseInfo";
 import { RPC_TO_MAIN } from "../rpcChannels";
 import { Observable } from "rxjs";
+import { NgClass, AsyncPipe } from "@angular/common";
+import { GamePlayersComponent } from "./gamePlayers.component";
 
 @Component({
-    selector: "pydt-game",
-    templateUrl: "./game.component.html",
-    styleUrls: ["./game.component.css"],
-    standalone: false
+  selector: "pydt-game",
+  templateUrl: "./game.component.html",
+  styleUrls: ["./game.component.css"],
+  imports: [NgClass, GamePlayersComponent, AsyncPipe],
 })
 export class GameComponent implements OnInit, OnDestroy {
+  private router = inject(Router);
+  private playTurnState = inject(PlayTurnState);
+  private metadataLoader = inject(SafeMetadataLoader);
+
   @Input() game: Game;
   @Input() user: User;
   @Input() gamePlayerProfiles: SteamProfileMap;
@@ -24,13 +30,11 @@ export class GameComponent implements OnInit, OnDestroy {
   games: CivGame[] = [];
   lastTurnText$: Observable<string>;
 
-  constructor(
-    private router: Router,
-    private playTurnState: PlayTurnState,
-    private metadataLoader: SafeMetadataLoader,
-  ) {}
+  ngOnInit(): void {
+    void this.init();
+  }
 
-  async ngOnInit(): Promise<void> {
+  private async init(): Promise<void> {
     const metadata = await this.metadataLoader.loadMetadata();
 
     if (metadata) {

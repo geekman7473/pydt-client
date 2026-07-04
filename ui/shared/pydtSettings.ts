@@ -1,4 +1,4 @@
-import { Injectable } from "@angular/core";
+import { Injectable, inject } from "@angular/core";
 import { CivGame, PlatformSaveLocation, GameStore, BasePath, Platform } from "pydt-shared";
 import { RPC_INVOKE } from "../rpcChannels";
 import { isEmpty, merge, omit } from "lodash-es";
@@ -124,7 +124,7 @@ export class PydtSettingsData {
 
 @Injectable()
 export class PydtSettingsFactory {
-  constructor(private readonly metadataLoader: SafeMetadataLoader) {}
+  private readonly metadataLoader = inject(SafeMetadataLoader);
 
   async getSettings(): Promise<PydtSettingsData> {
     const settings = await window.pydtApi.ipc.invoke<PydtSettingsData>(RPC_INVOKE.STORAGE_GET, STORAGE_CONFIG.SETTINGS);

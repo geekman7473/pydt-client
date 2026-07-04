@@ -1,5 +1,5 @@
 import { HttpClient } from "@angular/common/http";
-import { Component, OnDestroy, OnInit } from "@angular/core";
+import { Component, OnDestroy, OnInit, inject } from "@angular/core";
 import { ActivatedRoute, NavigationEnd, Router } from "@angular/router";
 import { difference, orderBy } from "lodash-es";
 import { Game, ProfileCacheService, SteamProfileMap, User, UserService } from "pydt-shared";
@@ -10,6 +10,7 @@ import { AuthService } from "../shared/authService";
 import { DiscourseInfo } from "../shared/discourseInfo";
 import { environment } from "../environments/environment";
 import { RPC_TO_MAIN, RPC_TO_RENDERER } from "../rpcChannels";
+import { GameComponent } from "./game.component";
 
 const POLL_INTERVAL: number = 600 * 1000;
 const TOAST_INTERVAL: number = 14.5 * 60 * 1000;
@@ -20,11 +21,19 @@ interface GameWithYourTurn extends Game {
 }
 
 @Component({
-    selector: "pydt-home",
-    templateUrl: "./home.component.html",
-    standalone: false
+  selector: "pydt-home",
+  templateUrl: "./home.component.html",
+  imports: [GameComponent],
 })
 export class HomeComponent implements OnInit, OnDestroy {
+  private readonly userService = inject(UserService);
+  private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly profileCache = inject(ProfileCacheService);
+  private readonly turnCacheService = inject(TurnCacheService);
+  private readonly authService = inject(AuthService);
+
   games: Game[];
   gamePlayerProfiles: SteamProfileMap = {};
   discourseInfo: DiscourseInfo;
@@ -40,17 +49,11 @@ export class HomeComponent implements OnInit, OnDestroy {
   private sortedTurns: GameWithYourTurn[];
   private navigationSubscription: Subscription;
 
-  constructor(
-    private readonly userService: UserService,
-    private readonly http: HttpClient,
-    private readonly router: Router,
-    private readonly route: ActivatedRoute,
-    private readonly profileCache: ProfileCacheService,
-    private readonly turnCacheService: TurnCacheService,
-    private readonly authService: AuthService,
-  ) {}
+  ngOnInit(): void {
+    void this.init();
+  }
 
-  async ngOnInit(): Promise<void> {
+  private async init(): Promise<void> {
     if (!(await this.authService.isAuthenticated())) {
       await this.router.navigate(["/auth"]);
       return;

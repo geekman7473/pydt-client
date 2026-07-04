@@ -1,5 +1,5 @@
 import Rollbar from "rollbar";
-import { Injectable, Inject, InjectionToken, ErrorHandler } from "@angular/core";
+import { Injectable, InjectionToken, ErrorHandler, inject } from "@angular/core";
 import { RPC_TO_MAIN } from "./rpcChannels";
 import { environment } from "./environments/environment";
 import { ROLLBAR_CONFIG } from "./rollbarConfig";
@@ -8,7 +8,9 @@ export const RollbarService = new InjectionToken<Rollbar>("rollbar");
 
 @Injectable()
 export class RollbarErrorHandler implements ErrorHandler {
-  constructor(@Inject(RollbarService) private rollbar: Rollbar) {
+  private rollbar = inject<Rollbar>(RollbarService);
+
+  constructor() {
     if (environment.production) {
       window.pydtApi.ipc.send(RPC_TO_MAIN.INIT_ROLLBAR, null);
     }

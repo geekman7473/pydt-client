@@ -1,19 +1,29 @@
-import { Component, NgZone, OnInit, ViewChild, TemplateRef } from "@angular/core";
+import { Component, NgZone, OnInit, ViewChild, TemplateRef, inject } from "@angular/core";
 import { BsModalRef, BsModalService, ModalOptions } from "ngx-bootstrap/modal";
-import { CivGame, GameStore } from "pydt-shared";
+import { CivGame, GameStore, PydtSharedModule } from "pydt-shared";
 import { PydtSettingsData, PydtSettingsFactory } from "./shared/pydtSettings";
 import { RPC_INVOKE, RPC_TO_MAIN, RPC_TO_RENDERER } from "./rpcChannels";
 import { setTheme } from "ngx-bootstrap/utils";
 import { SafeMetadataLoader } from "./shared/safeMetadataLoader";
 import { AuthService } from "./shared/authService";
-import { Router } from "@angular/router";
+import { Router, RouterOutlet } from "@angular/router";
+import { NgClass } from "@angular/common";
+import { FormsModule } from "@angular/forms";
+import { TabsModule } from "ngx-bootstrap/tabs";
 
 @Component({
-    selector: "pydt-app",
-    templateUrl: "./app.component.html",
-    standalone: false
+  selector: "pydt-app",
+  templateUrl: "./app.component.html",
+  imports: [RouterOutlet, NgClass, FormsModule, TabsModule, PydtSharedModule],
 })
 export class AppComponent implements OnInit {
+  private zone = inject(NgZone);
+  private metadataLoader = inject(SafeMetadataLoader);
+  private modalService = inject(BsModalService);
+  private pydtSettingsFactory = inject(PydtSettingsFactory);
+  private authService = inject(AuthService);
+  private router = inject(Router);
+
   version: string;
   newVersion: string;
   settings: PydtSettingsData;
@@ -24,14 +34,7 @@ export class AppComponent implements OnInit {
   openModal: BsModalRef;
   civGames: CivGame[];
 
-  constructor(
-    private zone: NgZone,
-    private metadataLoader: SafeMetadataLoader,
-    private modalService: BsModalService,
-    private pydtSettingsFactory: PydtSettingsFactory,
-    private authService: AuthService,
-    private router: Router,
-  ) {
+  constructor() {
     setTheme("bs5");
   }
 

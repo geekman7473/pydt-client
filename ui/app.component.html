@@ -25,19 +25,43 @@
       <tabset>
         <tab heading="General">
           <div class="form-check mt-2">
-            <input class="form-check-input" type="checkbox" name="launchCiv" [(ngModel)]="settings.launchCiv" id="launchCiv" />
+            <input
+              class="form-check-input"
+              type="checkbox"
+              name="launchCiv"
+              [(ngModel)]="settings.launchCiv"
+              id="launchCiv"
+            />
             <label class="form-check-label" for="launchCiv">Automatically launch Civ after downloading save</label>
           </div>
           <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="startOnBoot" [(ngModel)]="settings.startOnBoot" id="startOnBoot" />
+            <input
+              class="form-check-input"
+              type="checkbox"
+              name="startOnBoot"
+              [(ngModel)]="settings.startOnBoot"
+              id="startOnBoot"
+            />
             <label class="form-check-label" for="startOnBoot">Start client on boot</label>
           </div>
           <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="startHidden" [(ngModel)]="settings.startHidden" id="startHidden" />
+            <input
+              class="form-check-input"
+              type="checkbox"
+              name="startHidden"
+              [(ngModel)]="settings.startHidden"
+              id="startHidden"
+            />
             <label class="form-check-label" for="startHidden">Start hidden in tray</label>
           </div>
           <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="autoDownload" [(ngModel)]="settings.autoDownload" id="autoDownload" />
+            <input
+              class="form-check-input"
+              type="checkbox"
+              name="autoDownload"
+              [(ngModel)]="settings.autoDownload"
+              id="autoDownload"
+            />
             <label class="form-check-label" for="autoDownload">Automatically download turns in background (BETA)</label>
           </div>
           <div class="mt-2" [ngClass]="{ 'has-error': numSaves.errors }">

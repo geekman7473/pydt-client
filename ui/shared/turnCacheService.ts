@@ -1,4 +1,4 @@
-import { Injectable } from "@angular/core";
+import { Injectable, inject } from "@angular/core";
 import * as pako from "pako";
 import { BusyService, Game, GameService, GameTurnResponse } from "pydt-shared";
 import { BehaviorSubject, of } from "rxjs";
@@ -108,13 +108,13 @@ export class TurnDownloader {
               let data = new Uint8Array(localXhr.response);
 
               try {
-                data = pako.ungzip(data);
-              } catch (e) {
+                data = pako.ungzip(data) as Uint8Array<ArrayBufferLike>;
+              } catch {
                 // Ignore - file probably wasn't gzipped...
               }
 
               this.data$.next({
-                data,
+                data: data as Uint8Array<ArrayBufferLike>,
                 version: resp.version,
               });
             } catch (err) {
@@ -137,13 +137,13 @@ export class TurnDownloader {
 
 @Injectable()
 export class TurnCacheService {
+  private readonly gameService = inject(GameService);
+  private readonly busyService = inject(BusyService);
+  private readonly pydtSettingsFactory = inject(PydtSettingsFactory);
+
   private readonly cache: TurnDownloader[] = [];
 
-  constructor(
-    private readonly gameService: GameService,
-    private readonly busyService: BusyService,
-    private readonly pydtSettingsFactory: PydtSettingsFactory,
-  ) {
+  constructor() {
     void this.backgroundDownloader().then();
   }
 

@@ -24,7 +24,9 @@
       }
       @if (yourTurn && game.gameTurnRangeKey > 1) {
         <div>
-          <button type="submit" class="btn btn-primary btn-sm d-block w-100" (click)="playTurn()">{{ playText }}</button>
+          <button type="submit" class="btn btn-primary btn-sm d-block w-100" (click)="playTurn()">
+            {{ playText }}
+          </button>
         </div>
       }
       @if (yourTurn && game.gameTurnRangeKey === 1) {

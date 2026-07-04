@@ -1,4 +1,4 @@
-import { Injectable } from "@angular/core";
+import { Injectable, inject } from "@angular/core";
 import { Configuration, User, UserService } from "pydt-shared";
 import { RPC_INVOKE, RPC_TO_MAIN } from "../rpcChannels";
 import { STORAGE_CONFIG } from "../storageConfig";
@@ -13,12 +13,10 @@ export class AuthConfigData {
 
 @Injectable()
 export class AuthService {
-  private user: User;
+  private readonly apiConfig = inject(Configuration);
+  private readonly userService = inject(UserService);
 
-  constructor(
-    private readonly apiConfig: Configuration,
-    private readonly userService: UserService,
-  ) {}
+  private user: User;
 
   async isAuthenticated(): Promise<boolean> {
     await this.setApiConfig();

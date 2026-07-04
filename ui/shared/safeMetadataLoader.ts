@@ -1,13 +1,11 @@
-import { Injectable } from "@angular/core";
+import { Injectable, inject } from "@angular/core";
 import { Router } from "@angular/router";
 import { MetadataCacheService, PydtMetadata } from "pydt-shared";
 
 @Injectable()
 export class SafeMetadataLoader {
-  constructor(
-    public metadataCache: MetadataCacheService,
-    private router: Router,
-  ) {}
+  metadataCache = inject(MetadataCacheService);
+  private router = inject(Router);
 
   public async loadMetadata(): Promise<PydtMetadata> {
     try {

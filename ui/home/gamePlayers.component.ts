@@ -1,23 +1,27 @@
-import { Component, Input, OnInit } from "@angular/core";
-import { CivDef, Game, GamePlayer, SteamProfileMap, CivGame } from "pydt-shared";
+import { Component, Input, OnInit, inject } from "@angular/core";
+import { CivDef, Game, GamePlayer, SteamProfileMap, CivGame, PydtSharedModule } from "pydt-shared";
 import { SafeMetadataLoader } from "../shared/safeMetadataLoader";
 
 @Component({
-    selector: "pydt-game-players",
-    templateUrl: "./gamePlayers.component.html",
-    styleUrls: ["./gamePlayers.component.css"],
-    standalone: false
+  selector: "pydt-game-players",
+  templateUrl: "./gamePlayers.component.html",
+  styleUrls: ["./gamePlayers.component.css"],
+  imports: [PydtSharedModule],
 })
 export class GamePlayersComponent implements OnInit {
+  private metadataLoader = inject(SafeMetadataLoader);
+
   @Input() game: Game;
   @Input() gamePlayerProfiles: SteamProfileMap;
   gamePlayers: GamePlayer[] = [];
   civDefs: CivDef[] = [];
   games: CivGame[];
 
-  constructor(private metadataLoader: SafeMetadataLoader) {}
+  ngOnInit(): void {
+    void this.init();
+  }
 
-  async ngOnInit(): Promise<void> {
+  private async init(): Promise<void> {
     const metadata = await this.metadataLoader.loadMetadata();
 
     if (metadata) {
