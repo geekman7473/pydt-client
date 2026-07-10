@@ -5,18 +5,19 @@ import { RPC_TO_MAIN } from "./rpcChannels.js";
 const HOST = "127.0.0.1";
 const PORT = 47821;
 
+let server = null;
 let turnState = {
   ready: false,
   count: 0,
   games: [],
 };
 
-export const startTurnApi = (app, ipcMain) => {
-  ipcMain.on(RPC_TO_MAIN.UPDATE_TURNS_AVAILABLE, (_event, state) => {
-    turnState = state;
-  });
+const startServer = () => {
+  if (server) {
+    return;
+  }
 
-  const server = http.createServer((req, res) => {
+  server = http.createServer((req, res) => {
     if (req.method === "GET" && req.url === "/turns") {
       res.writeHead(200, {
         "Content-Type": "application/json; charset=utf-8",
@@ -30,8 +31,41 @@ export const startTurnApi = (app, ipcMain) => {
     res.end(JSON.stringify({ error: "Not found" }));
   });
 
-  server.on("error", error => log.error(`Turn API error: ${error.message}`));
-  server.listen(PORT, HOST, () => log.info(`Turn API listening on http://${HOST}:${PORT}/turns`));
+  server.on("error", error => {
+    log.error(`Turn API error: ${error.message}`);
+    server = null;
+  });
 
-  app.once("before-quit", () => server.close());
+  server.listen(PORT, HOST, () => log.info(`Turn API listening on http://${HOST}:${PORT}/turns`));
+};
+
+const stopServer = () => {
+  if (!server) {
+    return;
+  }
+
+  const currentServer = server;
+  server = null;
+
+  currentServer.close(() => log.info("Turn API stopped"));
+};
+
+export const initTurnApi = (app, ipcMain, enabled) => {
+  ipcMain.on(RPC_TO_MAIN.UPDATE_TURNS_AVAILABLE, (_event, state) => {
+    turnState = state;
+  });
+
+  ipcMain.on(RPC_TO_MAIN.SET_TURN_API_ENABLED, (_event, shouldEnable) => {
+    if (shouldEnable) {
+      startServer();
+    } else {
+      stopServer();
+    }
+  });
+
+  if (enabled) {
+    startServer();
+  }
+
+  app.once("before-quit", stopServer);
 };

@@ -4,6 +4,7 @@ export enum RPC_TO_MAIN {
   SHOW_NOTIFICATION = "show-notification",
   SHOW_WINDOW = "show-window",
   START_IOT = "start-iot",
+  SET_TURN_API_ENABLED = "set-turn-api-enabled",
   UPDATE_TURNS_AVAILABLE = "update-turns-available",
   LOG_INFO = "log-info",
   LOG_ERROR = "log-error",

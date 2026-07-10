@@ -8,9 +8,10 @@ import { checkForUpdates } from "./appUpdater.js";
 import { RPC_INVOKE, RPC_TO_MAIN } from "./rpcChannels.js";
 import { default as contextMenu } from "electron-context-menu";
 import { ROLLBAR_CONFIG } from "./rollbarConfig.js";
-import { startTurnApi } from "./turnApi.js";
+import { initTurnApi } from "./turnApi.js";
+import { getConfig } from "./storage.js";
+import { STORAGE_CONFIG } from "./storageConfig.js";
 
-import "./storage.js";
 import "./notifications.js";
 
 contextMenu({
@@ -38,7 +39,8 @@ contextMenu({
   });
 
   app.on("ready", async () => {
-    startTurnApi(app, ipcMain);
+    const settings = await getConfig(STORAGE_CONFIG.SETTINGS);
+    initTurnApi(app, ipcMain, !!settings.turnApiEnabled);
 
     ipcMain.handle(RPC_INVOKE.GET_PATH, (e, name) => app.getPath(name));
 

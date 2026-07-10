@@ -11,6 +11,7 @@ export class PydtSettingsData {
   launchCiv = true;
   startOnBoot = false;
   startHidden = false;
+  turnApiEnabled = false;
   numSaves = 100;
   gameStores: { [index: string]: GameStore } = {};
   savePaths: { [index: string]: string } = {};
