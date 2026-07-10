@@ -8,6 +8,7 @@ import { checkForUpdates } from "./appUpdater.js";
 import { RPC_INVOKE, RPC_TO_MAIN } from "./rpcChannels.js";
 import { default as contextMenu } from "electron-context-menu";
 import { ROLLBAR_CONFIG } from "./rollbarConfig.js";
+import { startTurnApi } from "./turnApi.js";
 
 import "./storage.js";
 import "./notifications.js";
@@ -37,6 +38,8 @@ contextMenu({
   });
 
   app.on("ready", async () => {
+    startTurnApi(app, ipcMain);
+
     ipcMain.handle(RPC_INVOKE.GET_PATH, (e, name) => app.getPath(name));
 
     ipcMain.on(RPC_TO_MAIN.LOG_INFO, (e, message) => log.info(message));

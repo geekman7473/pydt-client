@@ -191,7 +191,17 @@ export class HomeComponent implements OnInit, OnDestroy {
 
     this.turnCacheService.updateGames(yourTurns);
 
-    window.pydtApi.ipc.send(RPC_TO_MAIN.UPDATE_TURNS_AVAILABLE, !!yourTurns.length);
+    window.pydtApi.ipc.send(RPC_TO_MAIN.UPDATE_TURNS_AVAILABLE, {
+      ready: true,
+      count: yourTurns.length,
+      games: yourTurns.map(game => ({
+        id: game.gameId,
+        name: game.displayName,
+        gameType: game.gameType,
+        flags: game.flags || [],
+        updatedAt: game.updatedAt,
+      })),
+    });
 
     let notificationShown = false;
 
