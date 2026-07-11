@@ -8,7 +8,8 @@ import { PlayTurnState } from "./playTurnState.service";
 import { TurnCacheService, TurnDownloader } from "../shared/turnCacheService";
 import { SafeMetadataLoader } from "../shared/safeMetadataLoader";
 import { RPC_TO_MAIN } from "../rpcChannels";
-import { Observable } from "rxjs";
+import { Observable, Subject } from "rxjs";
+import { takeUntil } from "rxjs/operators";
 import { ProgressbarComponent } from "ngx-bootstrap/progressbar";
 import { GamePlayersComponent } from "../home/gamePlayers.component";
 import { MarkdownComponent } from "ngx-markdown";
@@ -45,6 +46,7 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
   private archiveDir: string;
   private saveFileToPlay: string;
   lastTurnText$: Observable<string>;
+  private readonly destroy$ = new Subject<void>();
 
   @HostListener("click", ["$event"])
   onMouseEnter(event: MouseEvent): boolean {
@@ -127,7 +129,7 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
       }
     }
 
-    this.turnDownloader.error$.subscribe(err => {
+    this.turnDownloader.error$.pipe(takeUntil(this.destroy$)).subscribe(err => {
       if (err) {
         this.turnDownloader = null;
         this.status = err;
@@ -136,7 +138,7 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
     });
 
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
-    this.turnDownloader?.data$.subscribe(async data => {
+    this.turnDownloader?.data$.pipe(takeUntil(this.destroy$)).subscribe(async data => {
       if (data) {
         setTimeout(() => {
           this.turnDownloader = null;
@@ -166,6 +168,8 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroy$.next();
+
     if (this.xhr) {
       this.xhr.abort();
       this.xhr = null;

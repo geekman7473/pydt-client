@@ -1,8 +1,8 @@
 import { Injectable, inject } from "@angular/core";
 import * as pako from "pako";
 import { BusyService, Game, GameService, GameTurnResponse } from "pydt-shared";
-import { BehaviorSubject, of } from "rxjs";
-import { catchError } from "rxjs/operators";
+import { BehaviorSubject, firstValueFrom, merge, of } from "rxjs";
+import { catchError, filter, map } from "rxjs/operators";
 import { PydtSettingsFactory } from "./pydtSettings";
 
 export class TurnDownloader {
@@ -35,19 +35,11 @@ export class TurnDownloader {
   waitForCompletion(): Promise<void> {
     this.startDownload();
 
-    return new Promise(resolve => {
-      this.error$.subscribe(err => {
-        if (err) {
-          resolve(null);
-        }
-      });
-
-      this.data$.subscribe(data => {
-        if (data) {
-          resolve(null);
-        }
-      });
-    });
+    return firstValueFrom(
+      merge(this.data$.pipe(filter(v => v !== null)), this.error$.pipe(filter(v => v !== null))).pipe(
+        map(() => undefined),
+      ),
+    );
   }
 
   startDownload(): void {
