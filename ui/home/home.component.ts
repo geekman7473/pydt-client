@@ -2,7 +2,7 @@ import { HttpClient } from "@angular/common/http";
 import { Component, OnDestroy, OnInit, inject } from "@angular/core";
 import { ActivatedRoute, NavigationEnd, Router } from "@angular/router";
 import { difference, orderBy } from "lodash-es";
-import { Game, ProfileCacheService, SteamProfileMap, User, UserService } from "pydt-shared";
+import { BusyService, Game, ProfileCacheService, SteamProfileMap, User, UserService } from "pydt-shared";
 import { Observable, Subscription, timer } from "rxjs";
 import { map } from "rxjs/operators";
 import { TurnCacheService } from "../shared/turnCacheService";
@@ -33,6 +33,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly profileCache = inject(ProfileCacheService);
   private readonly turnCacheService = inject(TurnCacheService);
   private readonly authService = inject(AuthService);
+  private readonly busyService = inject(BusyService);
 
   games: Game[];
   gamePlayerProfiles: SteamProfileMap = {};
@@ -54,37 +55,43 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private async init(): Promise<void> {
-    if (!(await this.authService.isAuthenticated())) {
-      await this.router.navigate(["/auth"]);
-      return;
+    this.busyService.incrementBusy(true);
+
+    try {
+      if (!(await this.authService.isAuthenticated())) {
+        await this.router.navigate(["/auth"]);
+        return;
+      }
+
+      this.route.queryParamMap.subscribe(x => {
+        if (x.has("errorLoading")) {
+          this.errorLoading = true;
+        }
+      });
+
+      // Force a refresh of the user data
+      this.user = await this.authService.getUser(true);
+
+      const $timer = timer(10, POLL_INTERVAL);
+
+      this.timerSub = $timer.subscribe(() => {
+        void this.safeLoadGames();
+      });
+
+      this.navigationSubscription = this.router.events.subscribe((e: unknown) => {
+        // If reloading page reload user and games (could be changing user)
+        if (e instanceof NavigationEnd) {
+          void this.authService.getUser(true).then(user => {
+            this.user = user;
+            this.iotConnected = false;
+            this.pollUrl = "";
+            void this.safeLoadGames();
+          });
+        }
+      });
+    } finally {
+      this.busyService.incrementBusy(false);
     }
-
-    this.route.queryParamMap.subscribe(x => {
-      if (x.has("errorLoading")) {
-        this.errorLoading = true;
-      }
-    });
-
-    // Force a refresh of the user data
-    this.user = await this.authService.getUser(true);
-
-    const $timer = timer(10, POLL_INTERVAL);
-
-    this.timerSub = $timer.subscribe(() => {
-      void this.safeLoadGames();
-    });
-
-    this.navigationSubscription = this.router.events.subscribe((e: unknown) => {
-      // If reloading page reload user and games (could be changing user)
-      if (e instanceof NavigationEnd) {
-        void this.authService.getUser(true).then(user => {
-          this.user = user;
-          this.iotConnected = false;
-          this.pollUrl = "";
-          void this.safeLoadGames();
-        });
-      }
-    });
   }
 
   ngOnDestroy(): void {

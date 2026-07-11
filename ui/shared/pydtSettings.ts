@@ -12,6 +12,7 @@ export class PydtSettingsData {
   startOnBoot = false;
   startHidden = false;
   turnApiEnabled = false;
+  turnApiPort = 47821;
   numSaves = 100;
   gameStores: { [index: string]: GameStore } = {};
   savePaths: { [index: string]: string } = {};

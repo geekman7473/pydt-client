@@ -64,6 +64,21 @@
             />
             <label class="form-check-label" for="turnApiEnabled">Enable localhost API for available turns</label>
           </div>
+          @if (settings.turnApiEnabled) {
+            <div class="mt-1 ms-4">
+              <label class="col-form-label col-form-label-sm me-1" for="turnApiPort">Port</label>
+              <input
+                type="number"
+                class="form-control form-control-sm d-inline-block"
+                [(ngModel)]="settings.turnApiPort"
+                name="turnApiPort"
+                id="turnApiPort"
+                min="1024"
+                max="65535"
+                style="width: 100px"
+              />
+            </div>
+          }
           <div class="form-check">
             <input
               class="form-check-input"

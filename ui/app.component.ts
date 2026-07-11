@@ -1,20 +1,18 @@
 import { Component, NgZone, OnInit, ViewChild, TemplateRef, inject } from "@angular/core";
 import { BsModalRef, BsModalService, ModalOptions } from "ngx-bootstrap/modal";
-import { CivGame, GameStore, PydtSharedModule } from "pydt-shared";
+import { CivGame, GameStore } from "pydt-shared";
 import { PydtSettingsData, PydtSettingsFactory } from "./shared/pydtSettings";
 import { RPC_INVOKE, RPC_TO_MAIN, RPC_TO_RENDERER } from "./rpcChannels";
 import { setTheme } from "ngx-bootstrap/utils";
 import { SafeMetadataLoader } from "./shared/safeMetadataLoader";
 import { AuthService } from "./shared/authService";
-import { Router, RouterOutlet } from "@angular/router";
-import { NgClass } from "@angular/common";
-import { FormsModule } from "@angular/forms";
-import { TabsModule } from "ngx-bootstrap/tabs";
+import { Router } from "@angular/router";
 
 @Component({
   selector: "pydt-app",
   templateUrl: "./app.component.html",
-  imports: [RouterOutlet, NgClass, FormsModule, TabsModule, PydtSharedModule],
+  // eslint-disable-next-line @angular-eslint/prefer-standalone
+  standalone: false,
 })
 export class AppComponent implements OnInit {
   private zone = inject(NgZone);
@@ -121,7 +119,10 @@ export class AppComponent implements OnInit {
   async saveSettings(): Promise<void> {
     await this.settings.save();
     window.pydtApi.setAutostart(this.settings.startOnBoot);
-    window.pydtApi.ipc.send(RPC_TO_MAIN.SET_TURN_API_ENABLED, this.settings.turnApiEnabled);
+    window.pydtApi.ipc.send(RPC_TO_MAIN.SET_TURN_API_ENABLED, {
+      enabled: this.settings.turnApiEnabled,
+      port: this.settings.turnApiPort,
+    });
     this.hideOpenModal();
   }
 

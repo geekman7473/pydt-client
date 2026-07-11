@@ -39,9 +39,9 @@ export const configFactory = (): Configuration =>
   });
 
 @NgModule({
+  declarations: [AppComponent],
   bootstrap: [AppComponent],
   imports: [
-    AppComponent,
     BrowserModule,
     BrowserAnimationsModule,
     ApiModule.forRoot(configFactory),

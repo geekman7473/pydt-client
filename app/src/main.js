@@ -40,7 +40,7 @@ contextMenu({
 
   app.on("ready", async () => {
     const settings = await getConfig(STORAGE_CONFIG.SETTINGS);
-    initTurnApi(app, ipcMain, !!settings.turnApiEnabled);
+    initTurnApi(app, ipcMain, !!settings.turnApiEnabled, settings.turnApiPort);
 
     ipcMain.handle(RPC_INVOKE.GET_PATH, (e, name) => app.getPath(name));
 
