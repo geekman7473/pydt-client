@@ -121,6 +121,7 @@ export class AppComponent implements OnInit {
   async saveSettings(): Promise<void> {
     await this.settings.save();
     window.pydtApi.setAutostart(this.settings.startOnBoot);
+    window.pydtApi.ipc.send(RPC_TO_MAIN.SET_TURN_API_ENABLED, this.settings.turnApiEnabled);
     this.hideOpenModal();
   }
 

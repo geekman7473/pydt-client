@@ -58,6 +58,16 @@
             <input
               class="form-check-input"
               type="checkbox"
+              name="turnApiEnabled"
+              [(ngModel)]="settings.turnApiEnabled"
+              id="turnApiEnabled"
+            />
+            <label class="form-check-label" for="turnApiEnabled">Enable localhost API for available turns</label>
+          </div>
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              type="checkbox"
               name="autoDownload"
               [(ngModel)]="settings.autoDownload"
               id="autoDownload"
