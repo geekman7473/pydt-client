@@ -1,5 +1,4 @@
 import { Injectable, inject } from "@angular/core";
-import * as pako from "pako";
 import { BusyService, Game, GameService, GameTurnResponse } from "pydt-shared";
 import { BehaviorSubject, firstValueFrom, merge, of } from "rxjs";
 import { catchError, filter, map } from "rxjs/operators";
@@ -88,7 +87,7 @@ export class TurnDownloader {
             this.downloading = false;
           };
 
-          this.xhr.onload = () => {
+          this.xhr.onload = async () => {
             const localXhr = this.xhr;
 
             this.xhr = null;
@@ -96,17 +95,16 @@ export class TurnDownloader {
             try {
               this.curBytes$.next(this.maxBytes$.value);
 
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-              let data = new Uint8Array(localXhr.response);
+              let data: Uint8Array<ArrayBufferLike> = new Uint8Array(localXhr.response as ArrayBuffer);
 
               try {
-                data = pako.ungzip(data) as Uint8Array<ArrayBufferLike>;
+                data = await window.pydtApi.gunzip(data);
               } catch {
                 // Ignore - file probably wasn't gzipped...
               }
 
               this.data$.next({
-                data: data as Uint8Array<ArrayBufferLike>,
+                data,
                 version: resp.version,
               });
             } catch (err) {

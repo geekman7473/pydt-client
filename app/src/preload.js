@@ -1,7 +1,11 @@
 import * as electron from "electron";
 import * as path from "path";
 import * as fs from "fs";
+import * as zlib from "zlib";
 import { mkdirpSync } from "mkdirp";
+// chokidar pinned to v3 - v4/v5 dropped the bundled fsevents dependency, so macOS
+// falls back to the generic fs.watch + directory-rescan path (throttled to 1s),
+// adding a noticeable delay to save-file detection that wasn't there with fsevents.
 import * as chokidar from "chokidar";
 import * as AutoLaunch from "auto-launch";
 import { RPC_INVOKE, RPC_TO_MAIN, RPC_TO_RENDERER } from "./rpcChannels.js";
@@ -105,6 +109,37 @@ electron.contextBridge.exposeInMainWorld("pydtApi", {
     unlinkSync: p => fs.unlinkSync(p),
     writeFileSync: (p, data) => fs.writeFileSync(p, Buffer.from(data)),
   },
+  // Both run off the renderer's main thread (async fs + libuv threadpool for zlib), so a
+  // large save file doesn't block the UI the way pako.gzip/ungzip on the renderer did.
+  readFileGzipped: p =>
+    new Promise((resolve, reject) => {
+      fs.readFile(p, (readErr, data) => {
+        if (readErr) {
+          reject(readErr);
+          return;
+        }
+
+        zlib.gzip(data, (gzipErr, compressed) => {
+          if (gzipErr) {
+            reject(gzipErr);
+            return;
+          }
+
+          resolve(compressed);
+        });
+      });
+    }),
+  gunzip: data =>
+    new Promise((resolve, reject) => {
+      zlib.gunzip(Buffer.from(data), (err, decompressed) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        resolve(decompressed);
+      });
+    }),
   path: {
     basename: p => path.basename(p),
     join: (...paths) => path.join(...paths),

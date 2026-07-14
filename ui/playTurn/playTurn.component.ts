@@ -1,7 +1,6 @@
 import { HttpErrorResponse } from "@angular/common/http";
 import { Component, HostListener, Input, NgZone, OnDestroy, OnInit, inject } from "@angular/core";
 import { Router } from "@angular/router";
-import * as pako from "pako";
 import { GameService, SteamProfileMap, CivGame, CountdownUtility, PydtSharedModule } from "pydt-shared";
 import { PydtSettingsFactory, PydtSettingsData } from "../shared/pydtSettings";
 import { PlayTurnState } from "./playTurnState.service";
@@ -211,7 +210,7 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
     this.abort = false;
     this.saveFileToUpload = null;
 
-    const fileData = pako.gzip(window.pydtApi.fs.readFileSync(fileBeingUploaded));
+    const fileData = await window.pydtApi.readFileGzipped(fileBeingUploaded);
     const moveTo = window.pydtApi.path.join(
       this.archiveDir,
       `${this.playTurnState.game.gameId.slice(0, 8)}_${window.pydtApi.path.basename(fileBeingUploaded)}`,

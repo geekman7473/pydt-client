@@ -4,6 +4,8 @@ export interface PydtApi {
   openUrl: (url: string) => void;
   setAutostart: (enable: boolean) => void;
   startChokidar: (params: { path: string; awaitWriteFinish: boolean }) => Promise<string>;
+  readFileGzipped: (path: string) => Promise<Uint8Array>;
+  gunzip: (data: Uint8Array) => Promise<Uint8Array>;
   ipc: {
     send: (channel: RPC_TO_MAIN, data: unknown) => void;
     receive: <T>(channel: RPC_TO_RENDERER, func: (arg: T) => void) => void;
