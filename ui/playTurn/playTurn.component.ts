@@ -190,7 +190,7 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
     return new Promise(resolve => setTimeout(resolve, 5000)).then(async () => {
       const path = await window.pydtApi.startChokidar({
         path: this.saveDir,
-        awaitWriteFinish: this.playTurnState.game.gameType !== "CIV6",
+        awaitWriteFinish: this.civGame.awaitWriteFinish,
       });
 
       this.ngZone.run(() => {
