@@ -29,4 +29,7 @@ export enum RPC_INVOKE {
   SHOW_OPEN_DIALOG = "show-open-dialog",
   STORAGE_GET = "storage-get",
   STORAGE_SET = "storage-set",
+  CIV6_AUTOSTART_PREPARE = "civ6-autostart-prepare",
+  CIV6_AUTOSTART_CLEAR = "civ6-autostart-clear",
+  CIV6_AUTOSTART_UNINSTALL = "civ6-autostart-uninstall",
 }

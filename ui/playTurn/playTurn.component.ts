@@ -6,7 +6,7 @@ import { PydtSettingsFactory, PydtSettingsData } from "../shared/pydtSettings";
 import { PlayTurnState } from "./playTurnState.service";
 import { TurnCacheService, TurnDownloader } from "../shared/turnCacheService";
 import { SafeMetadataLoader } from "../shared/safeMetadataLoader";
-import { RPC_TO_MAIN } from "../rpcChannels";
+import { RPC_INVOKE, RPC_TO_MAIN } from "../rpcChannels";
 import { Observable, Subject } from "rxjs";
 import { takeUntil } from "rxjs/operators";
 import { ProgressbarComponent } from "ngx-bootstrap/progressbar";
@@ -44,6 +44,8 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
   private saveDir: string;
   private archiveDir: string;
   private saveFileToPlay: string;
+  // True while PlayNowSave points at saveFileToPlay (see app/src/civ6Autostart.js).
+  private autostartArmed = false;
   lastTurnText$: Observable<string>;
   private readonly destroy$ = new Subject<void>();
 
@@ -152,10 +154,14 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
 
           await this.ngZone.run(async () => {
             if (this.settings.launchCiv) {
+              await this.prepareAutostart();
               window.pydtApi.ipc.send(RPC_TO_MAIN.OPEN_URL, url);
             }
 
             await this.watchForSave();
+            // The game is running and the player has saved, so the mod has consumed (and
+            // cleared) PlayNowSave; this is the safety net in case it never ran.
+            await this.clearAutostart();
 
             if (this.settings.autoPlay && this.saveFileToUpload) {
               await this.submitFile();
@@ -173,6 +179,9 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
 
+    // Leaving before the game consumed PlayNowSave: don't leave it armed for a later launch.
+    void this.clearAutostart();
+
     if (this.xhr) {
       this.xhr.abort();
       this.xhr = null;
@@ -182,6 +191,46 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
       this.turnDownloader.abort();
       this.turnDownloader = null;
     }
+  }
+
+  private get autostartSupported(): boolean {
+    return this.settings.autoStartGame && this.civGame.id === "CIV6";
+  }
+
+  /**
+   * Install the bundled AutoHotseat mod and point Civ 6's PlayNowSave at the downloaded save
+   * so the game boots straight into the turn. Any failure just falls back to a normal launch.
+   */
+  private async prepareAutostart(): Promise<void> {
+    if (!this.autostartSupported) {
+      return;
+    }
+
+    const result = await window.pydtApi.ipc.invoke<{ ok: boolean; message: string }>(
+      RPC_INVOKE.CIV6_AUTOSTART_PREPARE,
+      {
+        dataPath: this.settings.getDefaultDataPath(this.civGame),
+        savePath: this.saveFileToPlay,
+      },
+    );
+
+    this.autostartArmed = !!result?.ok;
+
+    if (!this.autostartArmed) {
+      window.pydtApi.ipc.send(RPC_TO_MAIN.LOG_ERROR, `Falling back to normal launch: ${result?.message}`);
+    }
+  }
+
+  private async clearAutostart(): Promise<void> {
+    if (!this.autostartArmed) {
+      return;
+    }
+
+    this.autostartArmed = false;
+
+    await window.pydtApi.ipc.invoke(RPC_INVOKE.CIV6_AUTOSTART_CLEAR, {
+      dataPath: this.settings.getDefaultDataPath(this.civGame),
+    });
   }
 
   public watchForSave(): Promise<void> {

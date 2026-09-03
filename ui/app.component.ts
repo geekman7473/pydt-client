@@ -131,6 +131,7 @@ export class AppComponent implements OnInit {
   async saveSettings(): Promise<void> {
     await this.settings.save();
     window.pydtApi.setAutostart(this.settings.startOnBoot);
+    await this.syncCiv6AutostartMod();
     window.pydtApi.ipc.send(RPC_TO_MAIN.SET_TURN_API_ENABLED, {
       enabled: this.settings.turnApiEnabled,
       port: this.settings.turnApiPort,
@@ -138,6 +139,32 @@ export class AppComponent implements OnInit {
     this.autoPlayEnabled = this.settings.autoPlay;
     this.pydtSettingsFactory.settingsChanged$.next();
     this.hideOpenModal();
+  }
+
+  /**
+   * The AutoHotseat mod is installed lazily when a Civ 6 turn is launched, but removed eagerly:
+   * as soon as auto-start is turned off (directly, or by turning off launching Civ at all) the
+   * mod folder and PlayNowSave go away so Civ 6 is left exactly as stock.
+   */
+  private async syncCiv6AutostartMod(): Promise<void> {
+    if (this.settings.launchCiv && this.settings.autoStartGame) {
+      return;
+    }
+
+    const civ6 = this.civGames?.find(x => x.id === "CIV6");
+
+    if (!civ6) {
+      return;
+    }
+
+    const result = await window.pydtApi.ipc.invoke<{ ok: boolean; message: string }>(
+      RPC_INVOKE.CIV6_AUTOSTART_UNINSTALL,
+      { dataPath: this.settings.getDefaultDataPath(civ6) },
+    );
+
+    if (!result?.ok) {
+      window.pydtApi.ipc.send(RPC_TO_MAIN.LOG_ERROR, `Could not remove Civ 6 autostart mod: ${result?.message}`);
+    }
   }
 
   async applyUpdate(): Promise<void> {

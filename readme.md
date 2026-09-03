@@ -10,6 +10,15 @@
 
 If you have an api-url.txt in the parent directory (created when deploying the API), it will use that, otherwise it will use the "production" URL.
 
+## Civ 6 Auto-Start
+
+With the "Auto-start Civ 6 directly into the downloaded save" setting on (the default), the client installs the
+bundled `app/mods/AutoHotseat` mod into the Civ 6 `Mods` folder and sets `[Debug] PlayNowSave` in `AppOptions.txt`
+before launching the game, so Civ 6 boots straight into the hotseat save. Turning the setting off removes the mod
+folder and blanks `PlayNowSave` immediately. The mod source lives in the
+[civ6-autostart-game](../civ6-autostart-game) repo; copy `mod/AutoHotseat` here when it changes.
+`app/src/civ6Autostart.js` owns the per-platform `AppOptions.txt` lookup (Windows, macOS, native Linux, Proton).
+
 ## Prod Packaging / Deployment
 
 * `npm run dist`

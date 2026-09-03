@@ -10,6 +10,9 @@ const FIELDS_NOT_TO_PERSIST = ["basePaths"];
 
 export class PydtSettingsData {
   launchCiv = true;
+  // Civ 6 only: install the bundled AutoHotseat mod and set PlayNowSave so the game
+  // boots straight into the downloaded save instead of the main menu.
+  autoStartGame = true;
   startOnBoot = false;
   startHidden = false;
   turnApiEnabled = false;
