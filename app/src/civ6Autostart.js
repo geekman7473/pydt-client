@@ -228,6 +228,29 @@ export const clearAutostart = ({ dataPath }) => {
 };
 
 /**
+ * Install/refresh the mod only, without arming PlayNowSave. Called when the user turns the
+ * setting on, so the Mods folder mirrors the checkbox right away. Never throws.
+ */
+export const installAutostartMod = ({ dataPath }) => {
+  try {
+    if (!fs.existsSync(dataPath)) {
+      return { ok: false, message: `Civ 6 data folder not found: ${dataPath} (has the game been run once?)` };
+    }
+
+    const target = installMod(dataPath);
+    const message = `Civ 6 autostart mod installed to ${target}`;
+    log.info(message);
+
+    return { ok: true, message };
+  } catch (err) {
+    const message = `Civ 6 autostart mod install failed: ${err.message}`;
+    log.error(message);
+
+    return { ok: false, message };
+  }
+};
+
+/**
  * Remove the mod from <dataPath>/Mods and blank PlayNowSave. Called when the user turns the
  * setting off, so Civ 6 is left exactly as it was before. Never throws.
  */
@@ -257,4 +280,5 @@ export const uninstallAutostart = ({ dataPath }) => {
 
 electron.ipcMain.handle(RPC_INVOKE.CIV6_AUTOSTART_PREPARE, (e, arg) => prepareAutostart(arg));
 electron.ipcMain.handle(RPC_INVOKE.CIV6_AUTOSTART_CLEAR, (e, arg) => clearAutostart(arg));
+electron.ipcMain.handle(RPC_INVOKE.CIV6_AUTOSTART_INSTALL, (e, arg) => installAutostartMod(arg));
 electron.ipcMain.handle(RPC_INVOKE.CIV6_AUTOSTART_UNINSTALL, (e, arg) => uninstallAutostart(arg));
