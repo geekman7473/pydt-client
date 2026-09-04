@@ -147,13 +147,9 @@ export class AppComponent implements OnInit {
    * all), revert anything that might still be in place right away.
    */
   private async syncCiv6AutostartMod(): Promise<void> {
-    if (this.settings.launchCiv && this.settings.autoStartGame) {
-      return;
-    }
-
     const civ6 = this.civGames?.find(x => x.id === "CIV6");
 
-    if (!civ6) {
+    if (!civ6 || this.settings.getAutoStart(civ6)) {
       return;
     }
 

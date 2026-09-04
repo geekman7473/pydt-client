@@ -195,16 +195,12 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
     }
   }
 
-  private get autostartSupported(): boolean {
-    return this.settings.autoStartGame && this.civGame.id === "CIV6";
-  }
-
   /**
    * Install the bundled AutoHotseat mod and point Civ 6's PlayNowSave at the downloaded save
    * so the game boots straight into the turn. Any failure just falls back to a normal launch.
    */
   private async prepareAutostart(): Promise<void> {
-    if (!this.autostartSupported) {
+    if (!this.settings.getAutoStart(this.civGame)) {
       return;
     }
 

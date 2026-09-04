@@ -10,9 +10,6 @@ const FIELDS_NOT_TO_PERSIST = ["basePaths"];
 
 export class PydtSettingsData {
   launchCiv = true;
-  // Civ 6 only: install the bundled AutoHotseat mod and set PlayNowSave so the game
-  // boots straight into the downloaded save instead of the main menu.
-  autoStartGame = true;
   startOnBoot = false;
   startHidden = false;
   turnApiEnabled = false;
@@ -20,6 +17,9 @@ export class PydtSettingsData {
   numSaves = 100;
   gameStores: { [index: string]: GameStore } = {};
   savePaths: { [index: string]: string } = {};
+  // Per game: boot straight into the downloaded save instead of the main menu. Only Civ 6
+  // supports it (via the bundled AutoHotseat mod + PlayNowSave); see AUTO_START_GAME_IDS.
+  autoStart: { [index: string]: boolean } = {};
   autoDownload = false;
   autoPlay = false;
 
@@ -127,7 +127,24 @@ export class PydtSettingsData {
   setSavePath(civGame: CivGame, savePath: string): void {
     this.savePaths[civGame.id] = savePath;
   }
+
+  /** Whether the client knows how to auto-start this game into a save at all. */
+  supportsAutoStart(civGame: CivGame): boolean {
+    return AUTO_START_GAME_IDS.includes(civGame.id);
+  }
+
+  /** Effective auto-start for this game: supported, launching Civ is on, and not turned off. */
+  getAutoStart(civGame: CivGame): boolean {
+    return this.supportsAutoStart(civGame) && this.launchCiv && this.autoStart[civGame.id] !== false;
+  }
+
+  setAutoStart(civGame: CivGame, enabled: boolean): void {
+    this.autoStart[civGame.id] = enabled;
+  }
 }
+
+// On by default for these games; the per-game map only records explicit opt-outs.
+const AUTO_START_GAME_IDS = ["CIV6"];
 
 @Injectable()
 export class PydtSettingsFactory {
