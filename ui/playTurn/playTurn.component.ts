@@ -159,10 +159,10 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
               window.pydtApi.ipc.send(RPC_TO_MAIN.OPEN_URL, url);
             }
 
+            // Nothing autostart-related happens when the save is detected: Civ 6 is almost
+            // certainly still running at that point. The revert is requested when this screen
+            // is left (after submit or on cancel) and completes once the game has exited.
             await this.watchForSave();
-            // The turn is played. Blank PlayNowSave now; the mod and PlayIntroVideo are put
-            // back the moment Civ 6 exits (the main process watches for that).
-            await this.revertAutostart();
 
             if (this.settings.autoPlay && this.saveFileToUpload) {
               await this.submitFile();
@@ -180,7 +180,8 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
 
-    // Leaving early (or after submitting): make sure nothing stays armed or installed.
+    // After submitting (goHome) or on cancel: request the revert. PlayNowSave is blanked at
+    // once; mod removal and PlayIntroVideo restore wait for Civ 6 to exit.
     void this.revertAutostart();
 
     if (this.xhr) {

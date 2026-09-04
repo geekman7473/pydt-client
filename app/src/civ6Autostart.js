@@ -264,7 +264,42 @@ export const installMod = dataPath => {
 
 const modTarget = dataPath => path.join(dataPath, "Mods", MOD_NAME);
 
-/** Remove the mod folder. Returns true if it is gone afterwards. */
+/** Civ 6 only sees a mod if its .modinfo is there; an empty folder is invisible to it. */
+const isModInstalled = dataPath => fs.existsSync(path.join(modTarget(dataPath), `${MOD_NAME}.modinfo`));
+
+/** Delete every file under dir, then the directories, ignoring failures. */
+const removeTree = dir => {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      removeTree(p);
+    } else {
+      try {
+        fs.rmSync(p, { force: true });
+      } catch (err) {
+        if (err.code === "EPERM" || err.code === "EACCES") {
+          fs.chmodSync(p, 0o666);
+          fs.rmSync(p, { force: true });
+        } else {
+          throw err;
+        }
+      }
+    }
+  }
+
+  try {
+    fs.rmdirSync(dir);
+  } catch {
+    // OneDrive keeps directory handles open on synced folders, so the folder itself often
+    // cannot be removed right away. Files are what matter; an empty folder is harmless.
+  }
+};
+
+/**
+ * Remove the mod. Returns true when Civ 6 can no longer see it (the .modinfo is gone), even
+ * if OneDrive left the empty folder behind.
+ */
 const removeMod = dataPath => {
   const target = modTarget(dataPath);
 
@@ -273,12 +308,16 @@ const removeMod = dataPath => {
   }
 
   try {
-    fs.rmSync(target, { recursive: true, force: true });
+    removeTree(target);
   } catch (err) {
     log.warn(`Could not remove ${target}: ${err.message}`);
   }
 
-  return !fs.existsSync(target);
+  if (fs.existsSync(target) && !isModInstalled(dataPath)) {
+    log.info(`Civ 6 autostart: mod files removed; empty folder ${target} left behind (locked by OneDrive?)`);
+  }
+
+  return !isModInstalled(dataPath);
 };
 
 // ---------------------------------------------------------------------------------------
@@ -391,7 +430,7 @@ export const revertAutostart = ({ dataPath, waitForExit = false }) => {
     }
 
     const state = appOptionsPath ? readState(appOptionsPath) : null;
-    const modPresent = fs.existsSync(modTarget(dataPath));
+    const modPresent = isModInstalled(dataPath);
 
     if (!state && !modPresent) {
       cancelPendingRevert();

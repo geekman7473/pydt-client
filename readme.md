@@ -14,8 +14,8 @@ If you have an api-url.txt in the parent directory (created when deploying the A
 
 With the "Auto-start Civ 6 directly into the downloaded save" setting on (the default), the client installs the
 bundled `app/mods/AutoHotseat` mod into the Civ 6 `Mods` folder and sets `[Debug] PlayNowSave` in `AppOptions.txt`
-before launching the game, so Civ 6 boots straight into the hotseat save. Everything is scoped to the turn: once the
-new save is detected (or the Play screen is left, or the setting is turned off) `PlayNowSave` is blanked at once, and
+before launching the game, so Civ 6 boots straight into the hotseat save. Everything is scoped to the turn: when the
+Play screen is left (after submitting or on cancel) or the setting is turned off, `PlayNowSave` is blanked at once, and
 as soon as Civ 6 exits the mod folder is removed and `PlayIntroVideo` is restored from a small state file kept next to
 `AppOptions.txt`. The restore has to wait for the exit because Civ 6 rewrites `AppOptions.txt` from memory when it
 closes. As a safety net, every games poll that finds no Civ 6 turn waiting runs the same revert. The mod source lives

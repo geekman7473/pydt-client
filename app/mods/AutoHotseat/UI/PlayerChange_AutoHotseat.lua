@@ -17,9 +17,17 @@
 include("PlayerChange");
 
 local SESSION_SENTINEL	:string = "AUTOHOTSEAT_SESSION";
-local AUTO_START_DELAY	:number = 0.2;		-- let the popup finish queueing before dismissing it
+-- Delay before pressing Start Turn. Stock BuildTurnControls calls SetPause(true) when the
+-- prompt appears and OnOk calls SetPause(false); SetPause only acts when GetWantsPause()
+-- differs from the request, and that flag round-trips through Network.BroadcastPlayerInfo.
+-- Pressing too early (0.2 s did it) skips the unpause and the game stays paused: no orders
+-- can be given. A human never clicks that fast.
+local AUTO_START_DELAY	:number = 1.0;
+-- After pressing, keep making sure the game is unpaused while the pause flag settles.
+local UNPAUSE_WATCH		:number = 4.0;
 local m_countdown		:number = 0;
 local m_ticking			:boolean = false;
+local m_unpauseLeft		:number = 0;
 
 local function Log( msg:string )
 	print("AutoHotseat: " .. tostring(msg));
@@ -39,22 +47,44 @@ local function StartTurnAvailable()
 end
 
 -- ===========================================================================
-local function AutoHotseat_OnUpdate( fDeltaTime:number )
-	if not m_ticking then
-		return;
-	end
-	m_countdown = m_countdown - fDeltaTime;
-	if m_countdown > 0 then
-		return;
-	end
-	m_ticking = false;
-	ContextPtr:ClearUpdate();
+local function LocalPlayerWantsPause()
+	local localPlayerID = Game.GetLocalPlayer();
+	local config = PlayerConfigurations[localPlayerID];
+	return config ~= nil and config:GetWantsPause();
+end
 
-	if StartTurnAvailable() then
-		Log("Auto-pressing Start Turn.");
-		OnOk();		-- stock global: unpause, LuaEvents.PlayerChange_Close, dequeue popup
-	else
+local function AutoHotseat_OnUpdate( fDeltaTime:number )
+	if m_ticking then
+		m_countdown = m_countdown - fDeltaTime;
+		if m_countdown > 0 then
+			return;
+		end
+		m_ticking = false;
+
+		if StartTurnAvailable() then
+			Log("Auto-pressing Start Turn.");
+			OnOk();		-- stock global: SetPause(false), LuaEvents.PlayerChange_Close, dequeue popup
+			m_unpauseLeft = UNPAUSE_WATCH;
+			return;		-- keep updating for the unpause watch below
+		end
+
 		Log("Start Turn not available (waiting or password); leaving the prompt up.");
+		ContextPtr:ClearUpdate();
+		return;
+	end
+
+	if m_unpauseLeft > 0 then
+		m_unpauseLeft = m_unpauseLeft - fDeltaTime;
+		if not ContextPtr:IsHidden() then
+			-- Prompt is back (next player change); the stock flow owns the pause again.
+			m_unpauseLeft = 0;
+		elseif LocalPlayerWantsPause() then
+			Log("Game still paused after Start Turn; unpausing.");
+			SetPause(false);		-- stock global, safe to call repeatedly
+		end
+		if m_unpauseLeft <= 0 then
+			ContextPtr:ClearUpdate();
+		end
 	end
 end
 

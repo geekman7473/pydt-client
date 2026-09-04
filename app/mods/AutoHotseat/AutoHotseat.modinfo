@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Mod id="b7e4c1d2-3f5a-4a8e-9c6d-2e1f0a9b8c7d" version="6">
+<Mod id="b7e4c1d2-3f5a-4a8e-9c6d-2e1f0a9b8c7d" version="7">
 	<Properties>
 		<Name>Auto Hotseat Loader</Name>
 		<Teaser>Automatically loads a hotseat save on startup</Teaser>
