@@ -13,19 +13,20 @@ import { RPC_INVOKE } from "./rpcChannels.js";
 // hotseat save), so we ship the "AutoHotseat" front-end mod (see app/mods/AutoHotseat)
 // which intercepts that option, loads the save as HOTSEAT and presses Start for you.
 //
-// Lifecycle: everything this module does to the game is scoped to one PYDT turn.
-//   prepareAutostart  - before launch: remember the original PlayIntroVideo, install the
-//                       mod, set PlayIntroVideo 0 and PlayNowSave <save>.
+// Lifecycle: the mod and PlayNowSave are scoped to one PYDT turn.
+//   prepareAutostart  - before launch: install the mod and set PlayNowSave <save>; with the
+//                       intro-skip setting on, also set PlayIntroVideo 0.
 //   revertAutostart   - after the turn (or any time nothing is pending): blank PlayNowSave
-//                       at once; once Civ 6 is no longer running also remove the mod and
-//                       restore PlayIntroVideo, so normal play sessions see a stock game.
-//                       Civ 6 rewrites AppOptions.txt from memory on exit, which is why
-//                       the option restore has to wait for the process to be gone.
+//                       at once; once Civ 6 is no longer running also remove the mod, so
+//                       normal play sessions see a stock game. (Removing while the game
+//                       runs would pull files out from under it.)
+// PlayIntroVideo is deliberately NOT restored: it is a plain user preference that the
+// player can flip back in the game's own options, and re-applying it on every launch is
+// simpler than tracking an original value across client restarts and game exits.
 // All path knowledge is centralised here and is cross-platform (incl. Proton).
 
 const MOD_NAME = "AutoHotseat";
 const CIV6_DATA_DIR = "Sid Meier's Civilization VI";
-const STATE_FILE = "pydt-autostart-state.json";
 const EXIT_POLL_MS = 10 * 1000;
 const EXIT_POLL_MAX_MS = 6 * 60 * 60 * 1000;
 
@@ -158,25 +159,6 @@ export const setAppOption = (text, section, key, value) => {
 const readOptions = appOptionsPath => fs.readFileSync(appOptionsPath, "utf8");
 
 const writeOptions = (appOptionsPath, text) => fs.writeFileSync(appOptionsPath, text, "utf8");
-
-// ---------------------------------------------------------------------------------------
-// State file: what we changed, so revert can put it back even after a client restart.
-// ---------------------------------------------------------------------------------------
-
-const statePath = appOptionsPath => path.join(path.dirname(appOptionsPath), STATE_FILE);
-
-const readState = appOptionsPath => {
-  try {
-    return JSON.parse(fs.readFileSync(statePath(appOptionsPath), "utf8"));
-  } catch {
-    return null;
-  }
-};
-
-const writeState = (appOptionsPath, state) =>
-  fs.writeFileSync(statePath(appOptionsPath), JSON.stringify(state, null, 2), "utf8");
-
-const deleteState = appOptionsPath => fs.rmSync(statePath(appOptionsPath), { force: true });
 
 // ---------------------------------------------------------------------------------------
 // Mod files
@@ -349,13 +331,19 @@ export const isCiv6Running = () => {
 // ---------------------------------------------------------------------------------------
 
 /**
- * Install the mod and point PlayNowSave at the save. Never throws; returns { ok, message }.
+ * Prepare Civ 6 for a turn. Never throws; returns { ok, message }.
  *
- * @param {{ dataPath: string; savePath: string }} arg dataPath is the Civ 6 user data
- *   folder (parent of Saves/ and Mods/), savePath the .Civ6Save to load.
+ * @param {{ dataPath: string; savePath: string; autoStart?: boolean; skipIntroVideo?: boolean }} arg
+ *   dataPath is the Civ 6 user data folder (parent of Saves/ and Mods/), savePath the
+ *   .Civ6Save to load. autoStart installs the mod and sets PlayNowSave; skipIntroVideo sets
+ *   PlayIntroVideo 0 (persistently). Both default to true; either can be used alone.
  */
-export const prepareAutostart = ({ dataPath, savePath }) => {
+export const prepareAutostart = ({ dataPath, savePath, autoStart = true, skipIntroVideo = true }) => {
   try {
+    if (!autoStart && !skipIntroVideo) {
+      return { ok: true, message: "Civ 6 autostart: nothing requested" };
+    }
+
     const appOptionsPath = findAppOptionsPath(dataPath);
 
     if (!appOptionsPath) {
@@ -368,25 +356,24 @@ export const prepareAutostart = ({ dataPath, savePath }) => {
     cancelPendingRevert();
 
     let text = readOptions(appOptionsPath);
+    const notes = [];
 
-    // Remember what we are about to change, unless an earlier turn already did and was not
-    // reverted yet (then the recorded value is the true original).
-    if (!readState(appOptionsPath)) {
-      writeState(appOptionsPath, {
-        previousIntroVideo: getAppOption(text, "PlayIntroVideo"),
-        armedAt: new Date().toISOString(),
-      });
+    if (skipIntroVideo && getAppOption(text, "PlayIntroVideo") !== "0") {
+      text = setAppOption(text, "Video", "PlayIntroVideo", "0");
+      notes.push("PlayIntroVideo=0");
     }
 
-    const target = installMod(dataPath);
-    const gameSavePath = toGamePath(savePath, dataPath);
+    if (autoStart) {
+      const target = installMod(dataPath);
+      const gameSavePath = toGamePath(savePath, dataPath);
 
-    text = setAppOption(text, "Debug", "PlayNowSave", gameSavePath);
-    // The ~3 minute cinematic would otherwise play before the mod gets a chance to run.
-    text = setAppOption(text, "Video", "PlayIntroVideo", "0");
+      text = setAppOption(text, "Debug", "PlayNowSave", gameSavePath);
+      notes.push(`mod at ${target}`, `PlayNowSave=${gameSavePath}`);
+    }
+
     writeOptions(appOptionsPath, text);
 
-    const message = `Civ 6 autostart armed: mod at ${target}, PlayNowSave=${gameSavePath} in ${appOptionsPath}`;
+    const message = `Civ 6 autostart armed: ${notes.join(", ")} in ${appOptionsPath}`;
     log.info(message);
 
     return { ok: true, message };
@@ -412,13 +399,13 @@ const blankPlayNowSave = appOptionsPath => {
 };
 
 /**
- * Put the game back the way it was: blank PlayNowSave now; if Civ 6 is not running, also
- * remove the mod, restore PlayIntroVideo and drop the state file. Never throws.
+ * Undo the turn-scoped changes: blank PlayNowSave now; if Civ 6 is not running, also remove
+ * the mod. PlayIntroVideo is left alone on purpose (see the header comment). Never throws.
  *
  * @param {{ dataPath: string; waitForExit?: boolean }} arg With waitForExit, a revert that
  *   found the game running is retried automatically every few seconds until it has exited.
  * @returns {{ ok: boolean; complete: boolean; message: string }} complete=false means the
- *   game was running and the mod/option restore is still pending.
+ *   game was running and the mod removal is still pending.
  */
 export const revertAutostart = ({ dataPath, waitForExit = false }) => {
   try {
@@ -429,10 +416,9 @@ export const revertAutostart = ({ dataPath, waitForExit = false }) => {
       notes.push("PlayNowSave blanked");
     }
 
-    const state = appOptionsPath ? readState(appOptionsPath) : null;
     const modPresent = isModInstalled(dataPath);
 
-    if (!state && !modPresent) {
+    if (!modPresent) {
       cancelPendingRevert();
 
       return { ok: true, complete: true, message: `Civ 6 autostart: nothing to revert${fmt(notes)}` };
@@ -441,9 +427,9 @@ export const revertAutostart = ({ dataPath, waitForExit = false }) => {
     if (isCiv6Running()) {
       if (waitForExit) {
         schedulePendingRevert(dataPath);
-        notes.push("Civ 6 is running; mod removal and option restore will happen when it exits");
+        notes.push("Civ 6 is running; mod removal will happen when it exits");
       } else {
-        notes.push("Civ 6 is running; mod removal and option restore deferred");
+        notes.push("Civ 6 is running; mod removal deferred");
       }
 
       const message = `Civ 6 autostart revert pending${fmt(notes)}`;
@@ -453,25 +439,7 @@ export const revertAutostart = ({ dataPath, waitForExit = false }) => {
     }
 
     const modGone = removeMod(dataPath);
-
-    if (modPresent) {
-      notes.push(modGone ? "mod removed" : "mod removal failed (will retry)");
-    }
-
-    if (state && appOptionsPath) {
-      if (state.previousIntroVideo !== null && state.previousIntroVideo !== undefined) {
-        const text = readOptions(appOptionsPath);
-
-        if (getAppOption(text, "PlayIntroVideo") !== state.previousIntroVideo) {
-          writeOptions(appOptionsPath, setAppOption(text, "Video", "PlayIntroVideo", state.previousIntroVideo));
-          notes.push(`PlayIntroVideo restored to ${state.previousIntroVideo}`);
-        }
-      }
-
-      if (modGone) {
-        deleteState(appOptionsPath);
-      }
-    }
+    notes.push(modGone ? "mod removed" : "mod removal failed (will retry)");
 
     if (modGone) {
       cancelPendingRevert();

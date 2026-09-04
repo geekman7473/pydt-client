@@ -191,14 +191,38 @@
                   Auto-start directly into the downloaded save
                   <small class="text-body-secondary d-block">
                     While you play a turn, PYDT installs its "Auto Hotseat Loader" mod into your Civ 6 Mods folder and
-                    disables the intro video; both are put back as soon as the game exits. Requires the mod to be
-                    enabled under Additional Content &gt; Mods (new mods are on by default).
-                    @if (!settings.launchCiv) {
-                      <span class="d-block">Enable "Automatically launch Civ" on the General tab to use this.</span>
-                    }
+                    removes it again as soon as the game exits. Requires the mod to be enabled under Additional Content
+                    &gt; Mods (new mods are on by default).
                   </small>
                 </label>
               </div>
+            }
+            @if (settings.supportsSkipIntroVideo(civGame)) {
+              <div class="form-check mt-2">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  [name]="'skipIntroVideo' + civGame.id"
+                  [ngModel]="settings.skipIntroVideo[civGame.id] !== false"
+                  (ngModelChange)="settings.setSkipIntroVideo(civGame, $event)"
+                  [disabled]="!settings.launchCiv"
+                  id="skipIntroVideo"
+                />
+                <label class="form-check-label" for="skipIntroVideo">
+                  Skip the intro video
+                  <small class="text-body-secondary d-block">
+                    Turns the intro cinematic off in the game's own options each time a turn is launched. To get it
+                    back, turn this off and re-enable the intro video in the game's Options menu.
+                  </small>
+                </label>
+              </div>
+            }
+            @if (
+              (settings.supportsAutoStart(civGame) || settings.supportsSkipIntroVideo(civGame)) && !settings.launchCiv
+            ) {
+              <small class="text-body-secondary d-block mt-1">
+                Enable "Automatically launch Civ" on the General tab to use these.
+              </small>
             }
           </tab>
         }

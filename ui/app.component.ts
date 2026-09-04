@@ -143,13 +143,13 @@ export class AppComponent implements OnInit {
 
   /**
    * The AutoHotseat mod and the AppOptions.txt tweaks only exist while a Civ 6 turn is being
-   * played. If the user turns auto-start off (directly, or by turning off launching Civ at
-   * all), revert anything that might still be in place right away.
+   * played. If the user turns auto-start or the intro skip off (directly, or by turning off
+   * launching Civ at all), revert anything that might still be in place right away.
    */
   private async syncCiv6AutostartMod(): Promise<void> {
     const civ6 = this.civGames?.find(x => x.id === "CIV6");
 
-    if (!civ6 || this.settings.getAutoStart(civ6)) {
+    if (!civ6 || (this.settings.getAutoStart(civ6) && this.settings.getSkipIntroVideo(civ6))) {
       return;
     }
 

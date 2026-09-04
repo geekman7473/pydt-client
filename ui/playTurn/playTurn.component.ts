@@ -196,11 +196,12 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Install the bundled AutoHotseat mod and point Civ 6's PlayNowSave at the downloaded save
-   * so the game boots straight into the turn. Any failure just falls back to a normal launch.
+   * Per the Civ 6 settings: install the bundled AutoHotseat mod and point PlayNowSave at the
+   * downloaded save so the game boots straight into the turn, and/or turn the intro video off
+   * for this launch. Any failure just falls back to a normal launch.
    */
   private async prepareAutostart(): Promise<void> {
-    if (!this.settings.getAutoStart(this.civGame)) {
+    if (!this.settings.touchesGameInstall(this.civGame)) {
       return;
     }
 
@@ -211,6 +212,8 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
       {
         dataPath: this.settings.getDefaultDataPath(this.civGame),
         savePath: this.saveFileToPlay,
+        autoStart: this.settings.getAutoStart(this.civGame),
+        skipIntroVideo: this.settings.getSkipIntroVideo(this.civGame),
       },
     );
 

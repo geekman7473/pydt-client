@@ -20,6 +20,9 @@ export class PydtSettingsData {
   // Per game: boot straight into the downloaded save instead of the main menu. Only Civ 6
   // supports it (via the bundled AutoHotseat mod + PlayNowSave); see AUTO_START_GAME_IDS.
   autoStart: { [index: string]: boolean } = {};
+  // Per game: turn the intro cinematic off in the game's own options every time a turn is
+  // launched (Civ 6: PlayIntroVideo 0 in AppOptions.txt; not restored). Independent of autoStart.
+  skipIntroVideo: { [index: string]: boolean } = {};
   autoDownload = false;
   autoPlay = false;
 
@@ -141,10 +144,29 @@ export class PydtSettingsData {
   setAutoStart(civGame: CivGame, enabled: boolean): void {
     this.autoStart[civGame.id] = enabled;
   }
+
+  supportsSkipIntroVideo(civGame: CivGame): boolean {
+    return SKIP_INTRO_GAME_IDS.includes(civGame.id);
+  }
+
+  /** Effective intro skip for this game: supported, launching Civ is on, and not turned off. */
+  getSkipIntroVideo(civGame: CivGame): boolean {
+    return this.supportsSkipIntroVideo(civGame) && this.launchCiv && this.skipIntroVideo[civGame.id] !== false;
+  }
+
+  setSkipIntroVideo(civGame: CivGame, enabled: boolean): void {
+    this.skipIntroVideo[civGame.id] = enabled;
+  }
+
+  /** True if launching a turn of this game changes anything about the installed game. */
+  touchesGameInstall(civGame: CivGame): boolean {
+    return this.getAutoStart(civGame) || this.getSkipIntroVideo(civGame);
+  }
 }
 
-// On by default for these games; the per-game map only records explicit opt-outs.
+// On by default for these games; the per-game maps only record explicit opt-outs.
 const AUTO_START_GAME_IDS = ["CIV6"];
+const SKIP_INTRO_GAME_IDS = ["CIV6"];
 
 @Injectable()
 export class PydtSettingsFactory {
