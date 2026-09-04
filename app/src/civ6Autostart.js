@@ -2,6 +2,7 @@ import electron from "electron";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import { execFileSync } from "child_process";
 import { default as log } from "electron-log";
 import { RPC_INVOKE } from "./rpcChannels.js";
 
@@ -12,11 +13,21 @@ import { RPC_INVOKE } from "./rpcChannels.js";
 // hotseat save), so we ship the "AutoHotseat" front-end mod (see app/mods/AutoHotseat)
 // which intercepts that option, loads the save as HOTSEAT and presses Start for you.
 //
-// This module installs/refreshes that mod into the user's Mods folder and manages the
-// PlayNowSave entry. It is cross-platform; all path knowledge is centralised here.
+// Lifecycle: everything this module does to the game is scoped to one PYDT turn.
+//   prepareAutostart  - before launch: remember the original PlayIntroVideo, install the
+//                       mod, set PlayIntroVideo 0 and PlayNowSave <save>.
+//   revertAutostart   - after the turn (or any time nothing is pending): blank PlayNowSave
+//                       at once; once Civ 6 is no longer running also remove the mod and
+//                       restore PlayIntroVideo, so normal play sessions see a stock game.
+//                       Civ 6 rewrites AppOptions.txt from memory on exit, which is why
+//                       the option restore has to wait for the process to be gone.
+// All path knowledge is centralised here and is cross-platform (incl. Proton).
 
 const MOD_NAME = "AutoHotseat";
 const CIV6_DATA_DIR = "Sid Meier's Civilization VI";
+const STATE_FILE = "pydt-autostart-state.json";
+const EXIT_POLL_MS = 10 * 1000;
+const EXIT_POLL_MAX_MS = 6 * 60 * 60 * 1000;
 
 const modSourceDir = () =>
   electron.app.isPackaged
@@ -107,6 +118,15 @@ export const toGamePath = (hostPath, dataPath) => {
   return path.normalize(hostPath);
 };
 
+const optionRe = key => new RegExp(`^${key}\\b[ \\t]*([^\\r\\n]*)`, "m");
+
+/** Current value of "Key Value" in AppOptions.txt text, "" if blank, null if the key is absent. */
+export const getAppOption = (text, key) => {
+  const m = optionRe(key).exec(text);
+
+  return m ? m[1].trim() : null;
+};
+
 /**
  * Set "Key Value" in AppOptions.txt text. Keys are unique across sections, one per line.
  * If the key is missing it is appended to the given section (created if needed).
@@ -114,7 +134,7 @@ export const toGamePath = (hostPath, dataPath) => {
 export const setAppOption = (text, section, key, value) => {
   const line = `${key} ${value}`.trimEnd();
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
-  const keyRe = new RegExp(`^${key}\\b[^\\r\\n]*`, "m");
+  const keyRe = optionRe(key);
 
   if (keyRe.test(text)) {
     // Function replacer so "$" in a path isn't treated as a replacement pattern.
@@ -139,8 +159,91 @@ const readOptions = appOptionsPath => fs.readFileSync(appOptionsPath, "utf8");
 
 const writeOptions = (appOptionsPath, text) => fs.writeFileSync(appOptionsPath, text, "utf8");
 
+// ---------------------------------------------------------------------------------------
+// State file: what we changed, so revert can put it back even after a client restart.
+// ---------------------------------------------------------------------------------------
+
+const statePath = appOptionsPath => path.join(path.dirname(appOptionsPath), STATE_FILE);
+
+const readState = appOptionsPath => {
+  try {
+    return JSON.parse(fs.readFileSync(statePath(appOptionsPath), "utf8"));
+  } catch {
+    return null;
+  }
+};
+
+const writeState = (appOptionsPath, state) =>
+  fs.writeFileSync(statePath(appOptionsPath), JSON.stringify(state, null, 2), "utf8");
+
+const deleteState = appOptionsPath => fs.rmSync(statePath(appOptionsPath), { force: true });
+
+// ---------------------------------------------------------------------------------------
+// Mod files
+// ---------------------------------------------------------------------------------------
+
+const writeFileForced = (file, data) => {
+  try {
+    fs.writeFileSync(file, data);
+  } catch (err) {
+    if (err.code !== "EPERM" && err.code !== "EACCES") {
+      throw err;
+    }
+
+    // Windows refuses to overwrite a read-only file (OneDrive can leave them that way).
+    fs.chmodSync(file, 0o666);
+    fs.writeFileSync(file, data);
+  }
+};
+
 /**
- * Copy the bundled mod into <dataPath>/Mods/AutoHotseat, replacing whatever is there.
+ * Make dst mirror src, touching as little as possible: files with identical content are
+ * left alone, differing ones are overwritten in place, stale files are removed best-effort.
+ * Never removes directories. Returns the number of files written.
+ */
+const syncDir = (src, dst) => {
+  fs.mkdirSync(dst, { recursive: true });
+
+  const wanted = new Set();
+  let written = 0;
+
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const s = path.join(src, entry.name);
+    const d = path.join(dst, entry.name);
+    wanted.add(entry.name);
+
+    if (entry.isDirectory()) {
+      written += syncDir(s, d);
+      continue;
+    }
+
+    const data = fs.readFileSync(s);
+
+    if (fs.existsSync(d) && fs.readFileSync(d).equals(data)) {
+      continue;
+    }
+
+    writeFileForced(d, data);
+    written++;
+  }
+
+  for (const entry of fs.readdirSync(dst, { withFileTypes: true })) {
+    if (!wanted.has(entry.name) && !entry.isDirectory()) {
+      try {
+        fs.rmSync(path.join(dst, entry.name), { force: true });
+      } catch (err) {
+        log.warn(`Could not remove stale mod file ${entry.name}: ${err.message}`);
+      }
+    }
+  }
+
+  return written;
+};
+
+/**
+ * Install or refresh the bundled mod at <dataPath>/Mods/AutoHotseat. Does not delete and
+ * re-create the folder: on Windows that fails with EPERM whenever OneDrive or a running
+ * Civ 6 holds a handle inside it, and it churns the sync client for nothing.
  */
 export const installMod = dataPath => {
   const source = modSourceDir();
@@ -149,15 +252,62 @@ export const installMod = dataPath => {
     throw new Error(`Bundled ${MOD_NAME} mod not found at ${source}`);
   }
 
-  const modsDir = path.join(dataPath, "Mods");
-  const target = path.join(modsDir, MOD_NAME);
+  const target = path.join(dataPath, "Mods", MOD_NAME);
+  const written = syncDir(source, target);
 
-  fs.mkdirSync(modsDir, { recursive: true });
-  fs.rmSync(target, { recursive: true, force: true });
-  fs.cpSync(source, target, { recursive: true });
+  if (written) {
+    log.info(`Civ 6 autostart mod: ${written} file(s) updated in ${target}`);
+  }
 
   return target;
 };
+
+const modTarget = dataPath => path.join(dataPath, "Mods", MOD_NAME);
+
+/** Remove the mod folder. Returns true if it is gone afterwards. */
+const removeMod = dataPath => {
+  const target = modTarget(dataPath);
+
+  if (!fs.existsSync(target)) {
+    return true;
+  }
+
+  try {
+    fs.rmSync(target, { recursive: true, force: true });
+  } catch (err) {
+    log.warn(`Could not remove ${target}: ${err.message}`);
+  }
+
+  return !fs.existsSync(target);
+};
+
+// ---------------------------------------------------------------------------------------
+// Is Civ 6 running? (needed because the game rewrites AppOptions.txt from memory on exit)
+// ---------------------------------------------------------------------------------------
+
+/** true / false, or null when the process list can't be read. */
+export const isCiv6Running = () => {
+  try {
+    if (process.platform === "win32") {
+      const out = execFileSync("tasklist", ["/FO", "CSV", "/NH"], { encoding: "utf8", windowsHide: true });
+
+      return /^"CivilizationVI[^"]*\.exe"/im.test(out);
+    }
+
+    // macOS: "Civilization VI"; native Linux: "CivilizationVI"; Proton: "CivilizationVI*.exe".
+    const out = execFileSync("ps", ["-axo", "comm="], { encoding: "utf8" });
+
+    return /civilization ?vi\b|\bciv6\b/i.test(out);
+  } catch (err) {
+    log.warn(`Could not read process list: ${err.message}`);
+
+    return null;
+  }
+};
+
+// ---------------------------------------------------------------------------------------
+// Public operations
+// ---------------------------------------------------------------------------------------
 
 /**
  * Install the mod and point PlayNowSave at the save. Never throws; returns { ok, message }.
@@ -176,16 +326,28 @@ export const prepareAutostart = ({ dataPath, savePath }) => {
       };
     }
 
-    const modTarget = installMod(dataPath);
-    const gameSavePath = toGamePath(savePath, dataPath);
+    cancelPendingRevert();
 
     let text = readOptions(appOptionsPath);
+
+    // Remember what we are about to change, unless an earlier turn already did and was not
+    // reverted yet (then the recorded value is the true original).
+    if (!readState(appOptionsPath)) {
+      writeState(appOptionsPath, {
+        previousIntroVideo: getAppOption(text, "PlayIntroVideo"),
+        armedAt: new Date().toISOString(),
+      });
+    }
+
+    const target = installMod(dataPath);
+    const gameSavePath = toGamePath(savePath, dataPath);
+
     text = setAppOption(text, "Debug", "PlayNowSave", gameSavePath);
     // The ~3 minute cinematic would otherwise play before the mod gets a chance to run.
     text = setAppOption(text, "Video", "PlayIntroVideo", "0");
     writeOptions(appOptionsPath, text);
 
-    const message = `Civ 6 autostart armed: mod at ${modTarget}, PlayNowSave=${gameSavePath} in ${appOptionsPath}`;
+    const message = `Civ 6 autostart armed: mod at ${target}, PlayNowSave=${gameSavePath} in ${appOptionsPath}`;
     log.info(message);
 
     return { ok: true, message };
@@ -197,88 +359,135 @@ export const prepareAutostart = ({ dataPath, savePath }) => {
   }
 };
 
+/** Blank PlayNowSave in the given file if it is set. Returns true if a write happened. */
+const blankPlayNowSave = appOptionsPath => {
+  const text = readOptions(appOptionsPath);
+
+  if (!getAppOption(text, "PlayNowSave")) {
+    return false;
+  }
+
+  writeOptions(appOptionsPath, setAppOption(text, "Debug", "PlayNowSave", ""));
+
+  return true;
+};
+
 /**
- * Blank PlayNowSave so a later plain launch shows the normal main menu. The mod does this
- * itself when it consumes the option; this is the safety net for when it never ran.
+ * Put the game back the way it was: blank PlayNowSave now; if Civ 6 is not running, also
+ * remove the mod, restore PlayIntroVideo and drop the state file. Never throws.
+ *
+ * @param {{ dataPath: string; waitForExit?: boolean }} arg With waitForExit, a revert that
+ *   found the game running is retried automatically every few seconds until it has exited.
+ * @returns {{ ok: boolean; complete: boolean; message: string }} complete=false means the
+ *   game was running and the mod/option restore is still pending.
  */
-export const clearAutostart = ({ dataPath }) => {
+export const revertAutostart = ({ dataPath, waitForExit = false }) => {
   try {
     const appOptionsPath = findAppOptionsPath(dataPath);
+    const notes = [];
 
-    if (!appOptionsPath) {
-      return { ok: false, message: "AppOptions.txt not found" };
+    if (appOptionsPath && blankPlayNowSave(appOptionsPath)) {
+      notes.push("PlayNowSave blanked");
     }
 
-    const text = readOptions(appOptionsPath);
+    const state = appOptionsPath ? readState(appOptionsPath) : null;
+    const modPresent = fs.existsSync(modTarget(dataPath));
 
-    if (!/^PlayNowSave[ \t]+\S/m.test(text)) {
-      return { ok: true, message: "PlayNowSave already clear" };
+    if (!state && !modPresent) {
+      cancelPendingRevert();
+
+      return { ok: true, complete: true, message: `Civ 6 autostart: nothing to revert${fmt(notes)}` };
     }
 
-    writeOptions(appOptionsPath, setAppOption(text, "Debug", "PlayNowSave", ""));
-    log.info(`Civ 6 autostart cleared in ${appOptionsPath}`);
+    if (isCiv6Running()) {
+      if (waitForExit) {
+        schedulePendingRevert(dataPath);
+        notes.push("Civ 6 is running; mod removal and option restore will happen when it exits");
+      } else {
+        notes.push("Civ 6 is running; mod removal and option restore deferred");
+      }
 
-    return { ok: true, message: "PlayNowSave cleared" };
+      const message = `Civ 6 autostart revert pending${fmt(notes)}`;
+      log.info(message);
+
+      return { ok: true, complete: false, message };
+    }
+
+    const modGone = removeMod(dataPath);
+
+    if (modPresent) {
+      notes.push(modGone ? "mod removed" : "mod removal failed (will retry)");
+    }
+
+    if (state && appOptionsPath) {
+      if (state.previousIntroVideo !== null && state.previousIntroVideo !== undefined) {
+        const text = readOptions(appOptionsPath);
+
+        if (getAppOption(text, "PlayIntroVideo") !== state.previousIntroVideo) {
+          writeOptions(appOptionsPath, setAppOption(text, "Video", "PlayIntroVideo", state.previousIntroVideo));
+          notes.push(`PlayIntroVideo restored to ${state.previousIntroVideo}`);
+        }
+      }
+
+      if (modGone) {
+        deleteState(appOptionsPath);
+      }
+    }
+
+    if (modGone) {
+      cancelPendingRevert();
+    } else if (waitForExit) {
+      schedulePendingRevert(dataPath);
+    }
+
+    const message = `Civ 6 autostart reverted${fmt(notes)}`;
+    log.info(message);
+
+    return { ok: true, complete: modGone, message };
   } catch (err) {
-    const message = `Civ 6 autostart clear failed: ${err.message}`;
+    const message = `Civ 6 autostart revert failed: ${err.message}`;
     log.error(message);
 
-    return { ok: false, message };
+    return { ok: false, complete: false, message };
   }
 };
 
-/**
- * Install/refresh the mod only, without arming PlayNowSave. Called when the user turns the
- * setting on, so the Mods folder mirrors the checkbox right away. Never throws.
- */
-export const installAutostartMod = ({ dataPath }) => {
-  try {
-    if (!fs.existsSync(dataPath)) {
-      return { ok: false, message: `Civ 6 data folder not found: ${dataPath} (has the game been run once?)` };
-    }
+const fmt = notes => (notes.length ? `: ${notes.join("; ")}` : "");
 
-    const target = installMod(dataPath);
-    const message = `Civ 6 autostart mod installed to ${target}`;
-    log.info(message);
+// One pending revert at a time is plenty: it re-reads everything from disk when it fires.
+let pendingRevert = null;
 
-    return { ok: true, message };
-  } catch (err) {
-    const message = `Civ 6 autostart mod install failed: ${err.message}`;
-    log.error(message);
-
-    return { ok: false, message };
+const cancelPendingRevert = () => {
+  if (pendingRevert) {
+    clearInterval(pendingRevert.timer);
+    pendingRevert = null;
   }
 };
 
-/**
- * Remove the mod from <dataPath>/Mods and blank PlayNowSave. Called when the user turns the
- * setting off, so Civ 6 is left exactly as it was before. Never throws.
- */
-export const uninstallAutostart = ({ dataPath }) => {
-  try {
-    const target = path.join(dataPath, "Mods", MOD_NAME);
-    const wasInstalled = fs.existsSync(target);
-
-    fs.rmSync(target, { recursive: true, force: true });
-
-    // Best effort; AppOptions.txt may legitimately not exist yet.
-    const cleared = clearAutostart({ dataPath });
-
-    const message = wasInstalled
-      ? `Civ 6 autostart mod removed from ${target} (${cleared.message})`
-      : `Civ 6 autostart mod was not installed at ${target} (${cleared.message})`;
-    log.info(message);
-
-    return { ok: true, message };
-  } catch (err) {
-    const message = `Civ 6 autostart uninstall failed: ${err.message}`;
-    log.error(message);
-
-    return { ok: false, message };
+const schedulePendingRevert = dataPath => {
+  if (pendingRevert) {
+    return;
   }
+
+  const startedAt = Date.now();
+
+  pendingRevert = {
+    timer: setInterval(() => {
+      if (Date.now() - startedAt > EXIT_POLL_MAX_MS) {
+        log.warn("Civ 6 autostart: gave up waiting for the game to exit; will retry on the next games poll");
+        cancelPendingRevert();
+        return;
+      }
+
+      if (isCiv6Running() === true) {
+        return;
+      }
+
+      log.info("Civ 6 autostart: game has exited, reverting");
+      revertAutostart({ dataPath, waitForExit: false });
+    }, EXIT_POLL_MS),
+  };
 };
 
 electron.ipcMain.handle(RPC_INVOKE.CIV6_AUTOSTART_PREPARE, (e, arg) => prepareAutostart(arg));
-electron.ipcMain.handle(RPC_INVOKE.CIV6_AUTOSTART_CLEAR, (e, arg) => clearAutostart(arg));
-electron.ipcMain.handle(RPC_INVOKE.CIV6_AUTOSTART_INSTALL, (e, arg) => installAutostartMod(arg));
-electron.ipcMain.handle(RPC_INVOKE.CIV6_AUTOSTART_UNINSTALL, (e, arg) => uninstallAutostart(arg));
+electron.ipcMain.handle(RPC_INVOKE.CIV6_AUTOSTART_REVERT, (e, arg) => revertAutostart(arg));

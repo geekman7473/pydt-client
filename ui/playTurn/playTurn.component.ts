@@ -44,8 +44,9 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
   private saveDir: string;
   private archiveDir: string;
   private saveFileToPlay: string;
-  // True while PlayNowSave points at saveFileToPlay (see app/src/civ6Autostart.js).
-  private autostartArmed = false;
+  // True once prepareAutostart has been attempted for this turn, so we know a revert is owed
+  // (see app/src/civ6Autostart.js).
+  private autostartAttempted = false;
   lastTurnText$: Observable<string>;
   private readonly destroy$ = new Subject<void>();
 
@@ -159,9 +160,9 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
             }
 
             await this.watchForSave();
-            // The game is running and the player has saved, so the mod has consumed (and
-            // cleared) PlayNowSave; this is the safety net in case it never ran.
-            await this.clearAutostart();
+            // The turn is played. Blank PlayNowSave now; the mod and PlayIntroVideo are put
+            // back the moment Civ 6 exits (the main process watches for that).
+            await this.revertAutostart();
 
             if (this.settings.autoPlay && this.saveFileToUpload) {
               await this.submitFile();
@@ -179,8 +180,8 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
 
-    // Leaving before the game consumed PlayNowSave: don't leave it armed for a later launch.
-    void this.clearAutostart();
+    // Leaving early (or after submitting): make sure nothing stays armed or installed.
+    void this.revertAutostart();
 
     if (this.xhr) {
       this.xhr.abort();
@@ -206,6 +207,8 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.autostartAttempted = true;
+
     const result = await window.pydtApi.ipc.invoke<{ ok: boolean; message: string }>(
       RPC_INVOKE.CIV6_AUTOSTART_PREPARE,
       {
@@ -214,22 +217,26 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
       },
     );
 
-    this.autostartArmed = !!result?.ok;
-
-    if (!this.autostartArmed) {
+    if (!result?.ok) {
       window.pydtApi.ipc.send(RPC_TO_MAIN.LOG_ERROR, `Falling back to normal launch: ${result?.message}`);
     }
   }
 
-  private async clearAutostart(): Promise<void> {
-    if (!this.autostartArmed) {
+  /**
+   * Undo everything prepareAutostart did. PlayNowSave is blanked immediately; the mod removal
+   * and PlayIntroVideo restore wait for Civ 6 to exit (the game rewrites AppOptions.txt from
+   * memory on exit), which the main process handles on its own.
+   */
+  private async revertAutostart(): Promise<void> {
+    if (!this.autostartAttempted) {
       return;
     }
 
-    this.autostartArmed = false;
+    this.autostartAttempted = false;
 
-    await window.pydtApi.ipc.invoke(RPC_INVOKE.CIV6_AUTOSTART_CLEAR, {
+    await window.pydtApi.ipc.invoke(RPC_INVOKE.CIV6_AUTOSTART_REVERT, {
       dataPath: this.settings.getDefaultDataPath(this.civGame),
+      waitForExit: true,
     });
   }
 

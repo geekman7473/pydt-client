@@ -142,29 +142,28 @@ export class AppComponent implements OnInit {
   }
 
   /**
-   * Keep the Civ 6 Mods folder in step with the auto-start checkbox: install the AutoHotseat mod
-   * as soon as the setting is saved on, remove it (and blank PlayNowSave) as soon as it is saved
-   * off, directly or by turning off launching Civ at all. Playing a turn re-installs it anyway.
+   * The AutoHotseat mod and the AppOptions.txt tweaks only exist while a Civ 6 turn is being
+   * played. If the user turns auto-start off (directly, or by turning off launching Civ at
+   * all), revert anything that might still be in place right away.
    */
   private async syncCiv6AutostartMod(): Promise<void> {
+    if (this.settings.launchCiv && this.settings.autoStartGame) {
+      return;
+    }
+
     const civ6 = this.civGames?.find(x => x.id === "CIV6");
 
     if (!civ6) {
       return;
     }
 
-    const enabled = this.settings.launchCiv && this.settings.autoStartGame;
-    const channel = enabled ? RPC_INVOKE.CIV6_AUTOSTART_INSTALL : RPC_INVOKE.CIV6_AUTOSTART_UNINSTALL;
-
-    const result = await window.pydtApi.ipc.invoke<{ ok: boolean; message: string }>(channel, {
+    const result = await window.pydtApi.ipc.invoke<{ ok: boolean; message: string }>(RPC_INVOKE.CIV6_AUTOSTART_REVERT, {
       dataPath: this.settings.getDefaultDataPath(civ6),
+      waitForExit: true,
     });
 
     if (!result?.ok) {
-      window.pydtApi.ipc.send(
-        RPC_TO_MAIN.LOG_ERROR,
-        `Could not ${enabled ? "install" : "remove"} Civ 6 autostart mod: ${result?.message}`,
-      );
+      window.pydtApi.ipc.send(RPC_TO_MAIN.LOG_ERROR, `Could not revert Civ 6 autostart: ${result?.message}`);
     }
   }
 
