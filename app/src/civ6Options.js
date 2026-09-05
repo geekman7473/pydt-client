@@ -76,7 +76,6 @@ export const getAppOption = (text, key) => {
   return m ? m[1].trim() : null;
 };
 
-
 export const setAppOption = (text, section, key, value) => {
   const line = `${key} ${value}`.trimEnd();
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
