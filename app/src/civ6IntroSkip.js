@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { default as log } from "electron-log";
 import { RPC_INVOKE } from "./rpcChannels.js";
-import { findGameInstallDir } from "./civ6Installation.js";
+import { findCiv6InstallDir } from "./civ6Installation.js";
 import {
   findAppOptionsPath,
   getAppOption,
@@ -28,7 +28,7 @@ const REVERT_POLL_MS = 10 * 1000;
 const REVERT_MAX_MS = 6 * 60 * 60 * 1000;
 
 export const logoMoviePaths = dataPath => {
-  const install = findGameInstallDir(dataPath);
+  const install = findCiv6InstallDir(dataPath);
 
   if (!install) {
     return [];

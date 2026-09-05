@@ -6,7 +6,13 @@ import { execFileSync } from "child_process";
 
 const CIV6_STEAM_DIR = "Sid Meier's Civilization VI";
 
+const isWindows = () => process.platform === "win32";
+
 const regQuery = (key, value) => {
+  if (!isWindows()) {
+    return null;
+  }
+
   try {
     const out = execFileSync("reg", ["query", key, "/v", value], { encoding: "utf8", windowsHide: true });
     const m = new RegExp(`${value}\\s+REG_SZ\\s+(.+)`, "i").exec(out);
@@ -18,6 +24,10 @@ const regQuery = (key, value) => {
 };
 
 const steamLibraries = () => {
+  if (!isWindows()) {
+    return [];
+  }
+
   const root =
     regQuery("HKCU\\Software\\Valve\\Steam", "SteamPath") ||
     regQuery("HKLM\\SOFTWARE\\WOW6432Node\\Valve\\Steam", "InstallPath") ||
@@ -37,12 +47,23 @@ const steamLibraries = () => {
   return libs;
 };
 
-const findSteamCiv6 = () =>
-  steamLibraries()
-    .map(lib => path.join(lib, "steamapps", "common", CIV6_STEAM_DIR))
-    .find(p => fs.existsSync(p)) || null;
+const findSteamCiv6 = () => {
+  if (!isWindows()) {
+    return null;
+  }
+
+  return (
+    steamLibraries()
+      .map(lib => path.join(lib, "steamapps", "common", CIV6_STEAM_DIR))
+      .find(p => fs.existsSync(p)) || null
+  );
+};
 
 const findEpicCiv6 = () => {
+  if (!isWindows()) {
+    return null;
+  }
+
   const manifests = path.join(
     process.env.ProgramData || "C:\\ProgramData",
     "Epic",
@@ -79,8 +100,8 @@ const findEpicCiv6 = () => {
 };
 
 // Windows only, find the installation folder for Civ 6
-export const findGameInstallDir = dataPath => {
-  if (process.platform !== "win32") {
+export const findCiv6InstallDir = dataPath => {
+  if (!isWindows()) {
     return null;
   }
 
