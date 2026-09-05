@@ -6,7 +6,7 @@ import { PydtSettingsFactory, PydtSettingsData } from "../shared/pydtSettings";
 import { PlayTurnState } from "./playTurnState.service";
 import { TurnCacheService, TurnDownloader } from "../shared/turnCacheService";
 import { SafeMetadataLoader } from "../shared/safeMetadataLoader";
-import { RPC_TO_MAIN } from "../rpcChannels";
+import { RPC_INVOKE, RPC_TO_MAIN } from "../rpcChannels";
 import { Observable, Subject } from "rxjs";
 import { takeUntil } from "rxjs/operators";
 import { ProgressbarComponent } from "ngx-bootstrap/progressbar";
@@ -152,6 +152,7 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
 
           await this.ngZone.run(async () => {
             if (this.settings.launchCiv) {
+              await this.prepareIntroSkip();
               window.pydtApi.ipc.send(RPC_TO_MAIN.OPEN_URL, url);
             }
 
@@ -181,6 +182,21 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
     if (this.turnDownloader) {
       this.turnDownloader.abort();
       this.turnDownloader = null;
+    }
+  }
+
+  private async prepareIntroSkip(): Promise<void> {
+    if (!this.settings.shouldSkipCiv6Intro(this.civGame)) {
+      return;
+    }
+
+    const result = await window.pydtApi.ipc.invoke<{ ok: boolean; message: string }>(
+      RPC_INVOKE.CIV6_INTRO_SKIP_PREPARE,
+      { dataPath: this.settings.getDefaultDataPath(this.civGame) },
+    );
+
+    if (!result?.ok) {
+      window.pydtApi.ipc.send(RPC_TO_MAIN.LOG_ERROR, `Intro skip unavailable: ${result?.message}`);
     }
   }
 

@@ -17,6 +17,7 @@ export class PydtSettingsData {
   numSaves = 100;
   gameStores: { [index: string]: GameStore } = {};
   savePaths: { [index: string]: string } = {};
+  civ6SkipIntroVideo = true;
   autoDownload = false;
   autoPlay = false;
 
@@ -124,7 +125,13 @@ export class PydtSettingsData {
   setSavePath(civGame: CivGame, savePath: string): void {
     this.savePaths[civGame.id] = savePath;
   }
+
+  shouldSkipCiv6Intro(civGame: CivGame): boolean {
+    return civGame.id === CIV6_GAME_ID && this.launchCiv && this.civ6SkipIntroVideo;
+  }
 }
+
+export const CIV6_GAME_ID = "CIV6";
 
 @Injectable()
 export class PydtSettingsFactory {

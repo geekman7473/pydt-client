@@ -1,7 +1,7 @@
 import { Component, NgZone, OnInit, ViewChild, TemplateRef, inject } from "@angular/core";
 import { BsModalRef, BsModalService, ModalOptions } from "ngx-bootstrap/modal";
 import { CivGame, GameStore } from "pydt-shared";
-import { PydtSettingsData, PydtSettingsFactory } from "./shared/pydtSettings";
+import { CIV6_GAME_ID, PydtSettingsData, PydtSettingsFactory } from "./shared/pydtSettings";
 import { RPC_INVOKE, RPC_TO_MAIN, RPC_TO_RENDERER } from "./rpcChannels";
 import { setTheme } from "ngx-bootstrap/utils";
 import { SafeMetadataLoader } from "./shared/safeMetadataLoader";
@@ -24,6 +24,7 @@ export class AppComponent implements OnInit {
   private updateService = inject(UpdateService);
   private router = inject(Router);
 
+  readonly CIV6_GAME_ID = CIV6_GAME_ID;
   version: string;
   newVersion: string;
   settings: PydtSettingsData;
@@ -131,6 +132,7 @@ export class AppComponent implements OnInit {
   async saveSettings(): Promise<void> {
     await this.settings.save();
     window.pydtApi.setAutostart(this.settings.startOnBoot);
+    await this.revertIntroSkipIfDisabled();
     window.pydtApi.ipc.send(RPC_TO_MAIN.SET_TURN_API_ENABLED, {
       enabled: this.settings.turnApiEnabled,
       port: this.settings.turnApiPort,
@@ -138,6 +140,26 @@ export class AppComponent implements OnInit {
     this.autoPlayEnabled = this.settings.autoPlay;
     this.pydtSettingsFactory.settingsChanged$.next();
     this.hideOpenModal();
+  }
+
+  // Turn the intro video back on
+  private async revertIntroSkipIfDisabled(): Promise<void> {
+    const civ6 = this.civGames?.find(x => x.id === CIV6_GAME_ID);
+
+    if (!civ6 || this.settings.shouldSkipCiv6Intro(civ6)) {
+      return;
+    }
+
+    const result = await window.pydtApi.ipc.invoke<{ ok: boolean; message: string }>(
+      RPC_INVOKE.CIV6_INTRO_SKIP_REVERT,
+      {
+        dataPath: this.settings.getDefaultDataPath(civ6),
+      },
+    );
+
+    if (!result?.ok) {
+      window.pydtApi.ipc.send(RPC_TO_MAIN.LOG_ERROR, `Could not restore Civ 6 intro video: ${result?.message}`);
+    }
   }
 
   async applyUpdate(): Promise<void> {
