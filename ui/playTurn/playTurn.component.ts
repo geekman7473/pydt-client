@@ -44,6 +44,8 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
   private saveDir: string;
   private archiveDir: string;
   private saveFileToPlay: string;
+  // Set once prepareAutostart has run for this turn, so we know a revert is owed
+  private autostartAttempted = false;
   lastTurnText$: Observable<string>;
   private readonly destroy$ = new Subject<void>();
 
@@ -153,9 +155,13 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
           await this.ngZone.run(async () => {
             if (this.settings.launchCiv) {
               await this.prepareIntroSkip();
+              await this.prepareAutostart();
               window.pydtApi.ipc.send(RPC_TO_MAIN.OPEN_URL, url);
             }
 
+            // Nothing autostart-related happens when the save is detected: Civ 6 is almost
+            // certainly still running at that point. The revert is requested when this screen
+            // is left (after submit or on cancel) and completes once the game has exited.
             await this.watchForSave();
 
             if (this.settings.autoPlay && this.saveFileToUpload) {
@@ -173,6 +179,9 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.destroy$.next();
+
+    // Leaving the screen (after submitting or on cancel): nothing may stay armed or installed.
+    void this.revertAutostart();
 
     if (this.xhr) {
       this.xhr.abort();
@@ -198,6 +207,41 @@ export class PlayTurnComponent implements OnInit, OnDestroy {
     if (!result?.ok) {
       window.pydtApi.ipc.send(RPC_TO_MAIN.LOG_ERROR, `Intro skip unavailable: ${result?.message}`);
     }
+  }
+
+  // Install the AutoHotseat mod and point PlayNowSave at the save; failures fall back to a normal launch
+  private async prepareAutostart(): Promise<void> {
+    if (!this.settings.shouldAutoStartCiv6(this.civGame)) {
+      return;
+    }
+
+    this.autostartAttempted = true;
+
+    const result = await window.pydtApi.ipc.invoke<{ ok: boolean; message: string }>(
+      RPC_INVOKE.CIV6_AUTOSTART_PREPARE,
+      {
+        dataPath: this.settings.getDefaultDataPath(this.civGame),
+        savePath: this.saveFileToPlay,
+      },
+    );
+
+    if (!result?.ok) {
+      window.pydtApi.ipc.send(RPC_TO_MAIN.LOG_ERROR, `Falling back to normal launch: ${result?.message}`);
+    }
+  }
+
+  // PlayNowSave is blanked immediately; the main process removes the mod once Civ 6 exits
+  private async revertAutostart(): Promise<void> {
+    if (!this.autostartAttempted) {
+      return;
+    }
+
+    this.autostartAttempted = false;
+
+    await window.pydtApi.ipc.invoke(RPC_INVOKE.CIV6_AUTOSTART_REVERT, {
+      dataPath: this.settings.getDefaultDataPath(this.civGame),
+      waitForExit: true,
+    });
   }
 
   public watchForSave(): Promise<void> {

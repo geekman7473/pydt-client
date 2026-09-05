@@ -133,6 +133,7 @@ export class AppComponent implements OnInit {
     await this.settings.save();
     window.pydtApi.setAutostart(this.settings.startOnBoot);
     await this.revertIntroSkipIfDisabled();
+    await this.revertCiv6AutostartIfDisabled();
     window.pydtApi.ipc.send(RPC_TO_MAIN.SET_TURN_API_ENABLED, {
       enabled: this.settings.turnApiEnabled,
       port: this.settings.turnApiPort,
@@ -159,6 +160,24 @@ export class AppComponent implements OnInit {
 
     if (!result?.ok) {
       window.pydtApi.ipc.send(RPC_TO_MAIN.LOG_ERROR, `Could not restore Civ 6 intro video: ${result?.message}`);
+    }
+  }
+
+  // The mod and PlayNowSave only exist while a turn is being played; clean up if auto-start is now off
+  private async revertCiv6AutostartIfDisabled(): Promise<void> {
+    const civ6 = this.civGames?.find(x => x.id === CIV6_GAME_ID);
+
+    if (!civ6 || this.settings.shouldAutoStartCiv6(civ6)) {
+      return;
+    }
+
+    const result = await window.pydtApi.ipc.invoke<{ ok: boolean; message: string }>(RPC_INVOKE.CIV6_AUTOSTART_REVERT, {
+      dataPath: this.settings.getDefaultDataPath(civ6),
+      waitForExit: true,
+    });
+
+    if (!result?.ok) {
+      window.pydtApi.ipc.send(RPC_TO_MAIN.LOG_ERROR, `Could not revert Civ 6 autostart: ${result?.message}`);
     }
   }
 

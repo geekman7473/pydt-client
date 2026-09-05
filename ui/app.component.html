@@ -190,12 +190,32 @@
                   Skip the intro videos
                   <small class="text-body-secondary d-block">
                     Turns the intro cinematic off in the game's options. On Windows the logo reels are skipped too.
-                    @if (!settings.launchCiv) {
-                      <span class="d-block">Enable "Automatically launch Civ" on the General tab to use this.</span>
-                    }
                   </small>
                 </label>
               </div>
+              <div class="form-check mt-2">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  name="civ6AutoStart"
+                  [(ngModel)]="settings.civ6AutoStart"
+                  [disabled]="!settings.launchCiv"
+                  id="civ6AutoStart"
+                />
+                <label class="form-check-label" for="civ6AutoStart">
+                  Auto-start directly into the downloaded save
+                  <small class="text-body-secondary d-block">
+                    While you play a turn, PYDT installs its "Auto Hotseat Loader" mod into your Civ 6 Mods folder and
+                    removes it again as soon as the game exits. Requires the mod to be enabled under Additional Content
+                    &gt; Mods (new mods are on by default).
+                  </small>
+                </label>
+              </div>
+              @if (!settings.launchCiv) {
+                <small class="text-body-secondary d-block mt-1">
+                  Enable "Automatically launch Civ" on the General tab to use these.
+                </small>
+              }
             }
           </tab>
         }

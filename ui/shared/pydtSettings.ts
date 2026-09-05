@@ -18,6 +18,7 @@ export class PydtSettingsData {
   gameStores: { [index: string]: GameStore } = {};
   savePaths: { [index: string]: string } = {};
   civ6SkipIntroVideo = true;
+  civ6AutoStart = true;
   autoDownload = false;
   autoPlay = false;
 
@@ -128,6 +129,10 @@ export class PydtSettingsData {
 
   shouldSkipCiv6Intro(civGame: CivGame): boolean {
     return civGame.id === CIV6_GAME_ID && this.launchCiv && this.civ6SkipIntroVideo;
+  }
+
+  shouldAutoStartCiv6(civGame: CivGame): boolean {
+    return civGame.id === CIV6_GAME_ID && this.launchCiv && this.civ6AutoStart;
   }
 }
 
