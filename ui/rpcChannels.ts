@@ -29,4 +29,6 @@ export enum RPC_INVOKE {
   SHOW_OPEN_DIALOG = "show-open-dialog",
   STORAGE_GET = "storage-get",
   STORAGE_SET = "storage-set",
+  CIV6_INTRO_SKIP_PREPARE = "civ6-intro-skip-prepare",
+  CIV6_INTRO_SKIP_REVERT = "civ6-intro-skip-revert",
 }
