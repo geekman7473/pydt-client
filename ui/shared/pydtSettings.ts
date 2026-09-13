@@ -18,7 +18,7 @@ export class PydtSettingsData {
   gameStores: { [index: string]: GameStore } = {};
   savePaths: { [index: string]: string } = {};
   civ6SkipIntroVideo = true;
-  civ6HotSeatAutoStart = true;
+  civ6HotSeatAutoStart = isCiv6HotSeatAutoStartDefaultOn();
   autoDownload = false;
   autoPlay = false;
 
@@ -137,6 +137,11 @@ export class PydtSettingsData {
 }
 
 export const CIV6_GAME_ID = "CIV6";
+
+export const isCiv6HotSeatAutoStartDefaultOn = (): boolean => window.pydtApi.platform === Platform.Windows.toString();
+
+// TODO: find a guinea pig willing to verify this on macOS and Linux.
+export const isCiv6HotSeatAutoStartBeta = (): boolean => !isCiv6HotSeatAutoStartDefaultOn();
 
 @Injectable()
 export class PydtSettingsFactory {
